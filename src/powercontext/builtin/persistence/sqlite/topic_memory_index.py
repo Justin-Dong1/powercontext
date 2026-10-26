@@ -384,6 +384,13 @@ class SQLiteTopicMemoryFTSIndex:
                 },
             )
 
+    async def set_lifecycle_active(self, connection, scope_id, topic_ref, projection, /, *, active: bool) -> None:
+        identity = {"scope_id": scope_id, "artifact_id": topic_ref.artifact_id}
+        await connection.execute(_DELETE_TOPIC_FTS_SQL, identity)
+        await connection.execute(_DELETE_CHUNK_FTS_SQL, identity)
+        if active:
+            await self.replace(connection, scope_id, topic_ref, projection)
+
     async def search(
         self,
         connection: AsyncConnection,
@@ -572,6 +579,7 @@ class SQLiteTopicMemoryVectorIndex:
                 ),
             },
         )
+
         for chunk, embedding in zip(projection.chunks, projection.chunk_embeddings, strict=True):
             inserted = await connection.execute(
                 insert(SQLITE_TOPIC_MEMORY_VECTOR_CHUNKS_TABLE).values(
@@ -597,6 +605,10 @@ class SQLiteTopicMemoryVectorIndex:
                     ),
                 },
             )
+
+    async def set_lifecycle_active(self, _connection, _scope_id, _topic_ref, _projection, /, *, active: bool) -> None:
+        # Vector rows are immutable projection data; active-table joins gate recall.
+        pass
 
     async def search(
         self,

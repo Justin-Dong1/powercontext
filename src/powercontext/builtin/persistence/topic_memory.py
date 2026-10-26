@@ -54,6 +54,7 @@ from powercontext.builtin.persistence.supervision import database_utc_now
 from powercontext.builtin.persistence.tables import (
     ARTIFACT_HEADS_TABLE,
     ARTIFACTS_TABLE,
+    SOURCE_LIFECYCLE_NODES_TABLE,
     TOPIC_MEMORY_ACTIVE_CHUNKS_TABLE,
     TOPIC_MEMORY_ACTIVE_TOPICS_TABLE,
     TOPIC_MEMORY_RETRIEVAL_SHAPE_TABLE,
@@ -175,6 +176,18 @@ class TopicMemoryRepository:
             .correlate(ARTIFACT_HEADS_TABLE)
             .scalar_subquery()
         )
+        lifecycle_inactive = (
+            select(SOURCE_LIFECYCLE_NODES_TABLE.c.node_id)
+            .where(
+                SOURCE_LIFECYCLE_NODES_TABLE.c.scope_id == ARTIFACT_HEADS_TABLE.c.scope_id,
+                SOURCE_LIFECYCLE_NODES_TABLE.c.kind == "topic",
+                SOURCE_LIFECYCLE_NODES_TABLE.c.available.is_(False),
+                SOURCE_LIFECYCLE_NODES_TABLE.c.reference_id == ARTIFACT_HEADS_TABLE.c.artifact_id,
+                SOURCE_LIFECYCLE_NODES_TABLE.c.reference_revision == ARTIFACT_HEADS_TABLE.c.revision,
+            )
+            .correlate(ARTIFACT_HEADS_TABLE)
+            .exists()
+        )
         invalid_head = (
             (
                 await connection.execute(
@@ -192,6 +205,7 @@ class TopicMemoryRepository:
                     )
                     .where(
                         ARTIFACT_HEADS_TABLE.c.family == TopicMemory.family,
+                        ~lifecycle_inactive,
                         or_(
                             TOPIC_MEMORY_ACTIVE_TOPICS_TABLE.c.revision.is_(None),
                             TOPIC_MEMORY_ACTIVE_TOPICS_TABLE.c.revision != ARTIFACT_HEADS_TABLE.c.revision,
@@ -292,6 +306,71 @@ class TopicMemoryRepository:
         await self._activate(connection, target_scope_id, topic, projection)
         return topic
 
+    async def set_lifecycle_active(
+        self,
+        connection: AsyncConnection,
+        scope_id: str,
+        ref: ArtifactRef,
+        /,
+        *,
+        active: bool,
+    ) -> None:
+        """Toggle one exact Topic projection without changing its immutable revision."""
+
+        topic = await self.artifacts.get(connection, scope_id, ref)
+        if not isinstance(topic, TopicMemory):
+            raise TopicMemoryStorageInvariantError("artifact-type", ref)
+        await connection.execute(
+            delete(TOPIC_MEMORY_ACTIVE_CHUNKS_TABLE).where(
+                TOPIC_MEMORY_ACTIVE_CHUNKS_TABLE.c.scope_id == scope_id,
+                TOPIC_MEMORY_ACTIVE_CHUNKS_TABLE.c.artifact_id == ref.artifact_id,
+            )
+        )
+        await connection.execute(
+            delete(TOPIC_MEMORY_ACTIVE_TOPICS_TABLE).where(
+                TOPIC_MEMORY_ACTIVE_TOPICS_TABLE.c.scope_id == scope_id,
+                TOPIC_MEMORY_ACTIVE_TOPICS_TABLE.c.artifact_id == ref.artifact_id,
+            )
+        )
+        projection = TopicMemoryProjection(
+            content=topic.content,
+            chunks=chunk_topic_memory_detail(topic.content.detail),
+            topic_searchable_text=analyze_text(f"{topic.content.title}\n{topic.content.summary}"),
+        )
+        await self.index.set_lifecycle_active(connection, scope_id, ref, projection, active=active)
+        if not active:
+            return
+        await connection.execute(
+            insert(TOPIC_MEMORY_ACTIVE_TOPICS_TABLE).values(
+                scope_id=scope_id,
+                family=TopicMemory.family,
+                artifact_id=ref.artifact_id,
+                revision=ref.revision,
+                title=topic.content.title,
+                summary=topic.content.summary,
+                searchable_text=projection.topic_searchable_text,
+                source_count=len(topic.lineage.sources),
+            )
+        )
+        await connection.execute(
+            insert(TOPIC_MEMORY_ACTIVE_CHUNKS_TABLE),
+            [
+                {
+                    "scope_id": scope_id,
+                    "family": TopicMemory.family,
+                    "artifact_id": ref.artifact_id,
+                    "revision": ref.revision,
+                    "chunk_ordinal": chunk.ordinal,
+                    "start_offset": chunk.start_offset,
+                    "end_offset": chunk.end_offset,
+                    "chunk_text": chunk.text,
+                    "searchable_text": analyze_text(chunk.text),
+                    "policy_version": chunk.policy_version,
+                }
+                for chunk in projection.chunks
+            ],
+        )
+
     async def get_exact(
         self,
         connection: AsyncConnection,
@@ -324,14 +403,23 @@ class TopicMemoryRepository:
                 TOPIC_MEMORY_ACTIVE_TOPICS_TABLE.c.artifact_id == ref.artifact_id,
             )
         )
+        lifecycle_inactive = active_revision is None
         if active_revision is None:
-            raise TopicMemoryStorageInvariantError("missing-active-head", (scope_id, ref.artifact_id))
+            active_revision = await connection.scalar(
+                select(ARTIFACT_HEADS_TABLE.c.revision).where(
+                    ARTIFACT_HEADS_TABLE.c.scope_id == scope_id,
+                    ARTIFACT_HEADS_TABLE.c.family == TopicMemory.family,
+                    ARTIFACT_HEADS_TABLE.c.artifact_id == ref.artifact_id,
+                )
+            )
+            if active_revision is None:
+                raise TopicMemoryStorageInvariantError("missing-head", (scope_id, ref.artifact_id))
         current = ArtifactRef(family=TopicMemory.family, artifact_id=ref.artifact_id, revision=int(active_revision))
         await self._check_retrieval_shape(connection)
         return PublishedTopicMemory(
             topic=topic,
             published_at=_aware_utc(published_at),
-            is_current=current == ref,
+            is_current=not lifecycle_inactive and current == ref,
             current_artifact=current,
         )
 

@@ -164,6 +164,10 @@ class OceanBaseTopicMemoryFTSIndex:
     ) -> None:
         pass
 
+    async def set_lifecycle_active(self, _connection, _scope_id, _topic_ref, _projection, /, *, active: bool) -> None:
+        # OceanBase FTS searches the shared active projection directly.
+        pass
+
     async def search(
         self,
         connection: AsyncConnection,
@@ -410,6 +414,7 @@ class OceanBaseTopicMemoryVectorIndex:
                 self.chunk_table.c.artifact_id == topic_ref.artifact_id,
             )
         )
+
         await connection.execute(
             delete(self.topic_table).where(
                 self.topic_table.c.scope_id == scope_id,
@@ -447,6 +452,10 @@ class OceanBaseTopicMemoryVectorIndex:
                 for chunk, embedding in zip(projection.chunks, projection.chunk_embeddings, strict=True)
             ],
         )
+
+    async def set_lifecycle_active(self, _connection, _scope_id, _topic_ref, _projection, /, *, active: bool) -> None:
+        # Vector rows remain reusable; active-table joins gate recall.
+        pass
 
     async def search(
         self,

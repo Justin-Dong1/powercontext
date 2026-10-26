@@ -1015,6 +1015,31 @@ MEMORY_ENTRY_HEADS_TABLE = Table(
 
 MEMORY_TABLES = (MEMORY_ENTRY_VERSIONS_TABLE, MEMORY_ENTRY_HEADS_TABLE)
 
+
+SOURCE_LIFECYCLE_NODES_TABLE = Table(
+    "pc_source_lifecycle_nodes",
+    SHARED_METADATA,
+    Column("scope_id", identity_string(MAX_SCOPE_ID_LENGTH), primary_key=True),
+    Column("node_id", identity_string(256), primary_key=True),
+    Column("kind", identity_string(16), nullable=False),
+    Column("reference_payload", _canonical_payload_type(), nullable=False),
+    Column("reference_id", identity_string(MAX_ARTIFACT_ID_LENGTH)),
+    Column("reference_revision", Integer),
+    Column("parents_payload", _canonical_payload_type(), nullable=False),
+    Column("policy", identity_string(8), nullable=False),
+    Column("available", Boolean, nullable=False),
+    Column("source_revision", Integer),
+    Column("last_sequence", Integer, nullable=False, server_default="0"),
+    Column("last_available", Boolean),
+    Column("last_reason", _entry_text_type()),
+    ForeignKeyConstraint(("scope_id",), ("pc_scopes.scope_id",), ondelete="CASCADE"),
+    CheckConstraint("kind IN ('source', 'memory', 'topic')", name="ck_pc_source_lifecycle_kind"),
+    CheckConstraint("policy IN ('all', 'any')", name="ck_pc_source_lifecycle_policy"),
+    CheckConstraint("source_revision IS NULL OR source_revision > 0", name="ck_pc_source_lifecycle_revision"),
+    CheckConstraint("reference_revision IS NULL OR reference_revision > 0", name="ck_pc_source_lifecycle_ref_revision"),
+    CheckConstraint("last_sequence >= 0", name="ck_pc_source_lifecycle_sequence"),
+)
+
 TOPIC_MEMORY_TABLES = (
     TOPIC_MEMORY_RETRIEVAL_SHAPE_TABLE,
     TOPIC_MEMORY_REVISION_PUBLICATIONS_TABLE,
@@ -1185,6 +1210,7 @@ BUILTIN_TABLES = (
     + SHARED_TABLES
     + TOPIC_MEMORY_TABLES
     + MEMORY_TABLES
+    + (SOURCE_LIFECYCLE_NODES_TABLE,)
     + STATISTICS_TABLES
     + RECURRENCE_TABLES
     + (ARTIFACT_TAGS_TABLE, DREAM_RUNS_TABLE, RECEIPT_MIGRATION_REVIEW_TABLE)

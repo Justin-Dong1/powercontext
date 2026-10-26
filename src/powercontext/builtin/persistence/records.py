@@ -32,6 +32,7 @@ from powercontext.artifacts import Artifact, ArtifactRef
 from powercontext.builtin.artifacts.memory import MemoryCitation, MemoryEntryVersion, MemoryService
 from powercontext.builtin.persistence.artifacts import ArtifactRepository
 from powercontext.builtin.persistence.cursor_codec import SignedCursorCodec
+from powercontext.builtin.persistence.cursors import SourceCursorRepository
 from powercontext.builtin.persistence.database import AsyncDatabase
 from powercontext.builtin.persistence.errors import (
     RepositoryNotFoundError,
@@ -43,6 +44,7 @@ from powercontext.builtin.persistence.family_management import (
 )
 from powercontext.builtin.persistence.memory import RelationalMemoryBackend
 from powercontext.builtin.persistence.processing import ArtifactProcessingPendingRepository
+from powercontext.builtin.persistence.processing_intents import ArtifactProcessingIntentRepository
 from powercontext.builtin.persistence.sources import SourceRepository, StoredSource
 from powercontext.builtin.persistence.tables import (
     ARTIFACT_HEADS_TABLE,
@@ -118,6 +120,7 @@ class RelationalRecordService:
         cursor_ttl_seconds: int = _DEFAULT_CURSOR_TTL_SECONDS,
         processing_pending: ArtifactProcessingPendingRepository | None = None,
         source_processing_bindings: tuple[str, ...] = (),
+        source_count_thresholds: Mapping[str, int] | None = None,
         topic_memory_list_reader: ArtifactListReader | None = None,
     ) -> None:
         self._database = database
@@ -134,6 +137,8 @@ class RelationalRecordService:
         self._cursor_secret = self._cursor_codec.secret
         self._processing_pending = processing_pending
         self._source_processing_bindings = source_processing_bindings
+        self._source_count_thresholds = dict(source_count_thresholds or {})
+        self._processing_notifier: Callable[[str], None] | None = None
         self._topic_memory_list_reader = topic_memory_list_reader
         self._tags = RelationalTagService(
             database,
@@ -204,20 +209,48 @@ class RelationalRecordService:
         source_type: str,
         source: ContentSource,
     ) -> SourceRecord:
+        triggered: tuple[str, ...] = ()
         try:
             async with self._database.transaction() as connection:
                 stored, created = await self._sources.add_with_status(connection, scope_id, source)
-                if created and self._processing_pending is not None:
-                    for binding_name in self._source_processing_bindings:
-                        await self._processing_pending.raise_source(
-                            connection,
-                            scope_id,
-                            binding_name,
-                            stored.journal_position,
-                        )
+                if created:
+                    triggered = await self._mark_source_processing(connection, scope_id, stored.journal_position)
         except StoredPayloadConflictError as error:
             raise BaseValueConflictError("source", (scope_id, source_type, source.name)) from error
+        self._notify_processing(triggered)
         return _source_record(scope_id, stored)
+
+    def set_processing_notifier(self, notifier: Callable[[str], None] | None) -> None:
+        self._processing_notifier = notifier
+
+    def _notify_processing(self, bindings: tuple[str, ...]) -> None:
+        if self._processing_notifier is not None:
+            for binding in bindings:
+                self._processing_notifier(binding)
+
+    async def _mark_source_processing(
+        self, connection: AsyncConnection, scope_id: str, position: int
+    ) -> tuple[str, ...]:
+        if self._processing_pending is None:
+            return ()
+        bindings = tuple(dict.fromkeys((*self._source_processing_bindings, *self._source_count_thresholds)))
+        intents = ArtifactProcessingIntentRepository()
+        cursors = SourceCursorRepository()
+        triggered: list[str] = []
+        for binding in bindings:
+            await self._processing_pending.raise_source(connection, scope_id, binding, position)
+            intent = await intents.load(connection, scope_id, binding, for_update=True)
+            if intent is None or intent.dirty_generation == intent.clean_generation:
+                intent = await intents.mark_dirty(connection, scope_id, binding)
+            threshold = self._source_count_thresholds.get(binding)
+            if threshold is None:
+                continue
+            cursor = await cursors.load(connection, scope_id, binding)
+            consumed = 0 if cursor is None else cursor.cursor.sequence
+            if position - consumed >= threshold and intent.requested_generation <= intent.handled_generation:
+                await intents.request(connection, scope_id, binding)
+                triggered.append(binding)
+        return tuple(triggered)
 
     async def get_source(self, scope_id: str, source_type: str, source_id: str, /) -> SourceRecord:
         self._require_content_source(source_type)
@@ -332,12 +365,15 @@ class RelationalRecordService:
             if isinstance(writer, PreparingFamilyManagementWriter)
             else command
         )
+        triggered: tuple[str, ...] = ()
         try:
             async with self._database.transaction() as connection:
                 stored = await self._sources.add(connection, scope_id, source)
+                triggered = await self._mark_source_processing(connection, scope_id, stored.journal_position)
                 artifact = await writer.create(connection, scope_id, artifact_id, prepared, stored.ref)
         except (StoredPayloadConflictError, RevisionConflictError) as error:
             raise BaseValueConflictError("artifact", (scope_id, family, artifact_id)) from error
+        self._notify_processing(triggered)
         return _artifact_created(scope_id, artifact)
 
     async def get_artifact(self, scope_id: str, family: str, artifact_id: str, /) -> ArtifactRecord:

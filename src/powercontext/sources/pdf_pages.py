@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import hashlib
 import io
+import re
+from itertools import pairwise
 from urllib.parse import quote
 
 from pydantic import BaseModel, Field
@@ -61,14 +63,14 @@ class PDFPageSource(Source):
 
 def pdf_page_source_id(document_id: str, document_sha256: str, page_number: int) -> str:
     if not document_id.strip():
-        raise ValueError("document_id must not be blank")
+        raise ValueError("document_id must not be blank")  # noqa: TRY003
     if len(document_sha256) != 64 or any(character not in "0123456789abcdef" for character in document_sha256):
-        raise ValueError("document_sha256 must be a lowercase SHA-256 digest")
+        raise ValueError("document_sha256 must be a lowercase SHA-256 digest")  # noqa: TRY003
     if page_number < 1:
-        raise ValueError("page_number must be positive")
+        raise ValueError("page_number must be positive")  # noqa: TRY003
     source_id = f"pdf:{quote(document_id, safe='')}:{document_sha256}:{page_number}"
     if len(source_id) > MAX_SOURCE_ID_LENGTH:
-        raise ValueError(f"source_id must not exceed {MAX_SOURCE_ID_LENGTH} characters")
+        raise ValueError(f"source_id must not exceed {MAX_SOURCE_ID_LENGTH} characters")  # noqa: TRY003
     return source_id
 
 
@@ -76,19 +78,19 @@ def parse_pdf_document(value: PDFDocumentInput) -> tuple[PDFPageInput, ...]:
     """Extract every physical page, failing atomically if any page cannot be read."""
 
     if not value.document_id.strip():
-        raise ValueError("document_id must not be blank")
+        raise ValueError("document_id must not be blank")  # noqa: TRY003
     document_sha256 = hashlib.sha256(value.content).hexdigest()
     try:
         reader = PdfReader(io.BytesIO(value.content), strict=False)
         if reader.is_encrypted and not reader.decrypt(""):
-            raise ValueError("PDF requires a non-empty password")
+            raise ValueError("PDF requires a non-empty password")  # noqa: TRY003, TRY301
         texts = tuple(page.extract_text() or "" for page in reader.pages)
     except ValueError:
         raise
     except Exception as error:
-        raise ValueError("content must be a complete readable PDF") from error
+        raise ValueError("content must be a complete readable PDF") from error  # noqa: TRY003
     if not texts:
-        raise ValueError("PDF must contain at least one physical page")
+        raise ValueError("PDF must contain at least one physical page")  # noqa: TRY003
     return tuple(
         PDFPageInput(
             document_id=value.document_id,
@@ -153,20 +155,31 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     """Search a scoped Memory and return distinct, exact page citations."""
 
     if limit < 1:
-        raise ValueError("limit must be positive")
-    page = await memory.search(SearchMemoryRequest(query=question, mode="fts", limit=max(limit * 4, 32)))
+        raise ValueError("limit must be positive")  # noqa: TRY003
+    queries = _pdf_search_queries(question)
+    ranked: dict[tuple[str, str, str], tuple[float, MemoryCitation]] = {}
+    for query_index, query in enumerate(queries):
+        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 40)))
+        weight = 1.25 if query_index and query in _finance_expansions(question) else 1.0
+        for rank, hit in enumerate(page.hits, start=1):
+            citation = MemoryCitation(
+                memory_ref=hit.memory_ref,
+                entry_id=hit.entry_id,
+                entry_version_id=hit.entry_version_id,
+            )
+            identity = (hit.memory_ref.artifact_id, hit.entry_id, hit.entry_version_id)
+            score, _ = ranked.get(identity, (0.0, citation))
+            ranked[identity] = (score + weight / (8 + rank), citation)
+
     citations: list[MemoryCitation] = []
     seen_sources: set[str] = set()
-    for hit in page.hits:
-        citation = MemoryCitation(
-            memory_ref=hit.memory_ref,
-            entry_id=hit.entry_id,
-            entry_version_id=hit.entry_version_id,
-        )
+    ordered = sorted(
+        ranked.values(),
+        key=lambda item: (-item[0], item[1].entry_id, item[1].entry_version_id),
+    )
+    for _score, citation in ordered:
         entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
-        source_ids = tuple(
-            source.source_id for source in entry.sources if source.source_type == PDF_PAGE_SOURCE_NAME
-        )
+        source_ids = tuple(source.source_id for source in entry.sources if source.source_type == PDF_PAGE_SOURCE_NAME)
         if not source_ids or any(source_id in seen_sources for source_id in source_ids):
             continue
         seen_sources.update(source_ids)
@@ -174,6 +187,87 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         if len(citations) == limit:
             break
     return tuple(citations)
+
+
+_PDF_QUERY_STOPWORDS = frozenset({
+    "answer",
+    "calculate",
+    "company",
+    "details",
+    "directly",
+    "explicitly",
+    "fiscal",
+    "from",
+    "give",
+    "important",
+    "information",
+    "million",
+    "millions",
+    "only",
+    "outlined",
+    "perspective",
+    "primarily",
+    "question",
+    "relying",
+    "reported",
+    "respond",
+    "shown",
+    "state",
+    "statements",
+    "using",
+    "what",
+    "which",
+    "with",
+    "would",
+    "year",
+    "years",
+    "fy",
+})
+
+_FINANCE_QUERY_EXPANSIONS = {
+    "geograph": ("geographic areas", "geographic divisions", "international markets"),
+    "legal": ("legal proceedings", "material litigation"),
+    "restructur": ("restructuring charges", "restructuring costs"),
+    "ebitda": ("operating profit", "operating income", "depreciation amortization"),
+    "capex": ("capital expenditures", "capital spending"),
+    "margin": ("net revenue", "net sales", "operating income"),
+    "revenue": ("net revenue", "net sales"),
+    "sales": ("net sales", "net revenue"),
+    "debt": ("long term debt", "borrowings"),
+    "cash": ("cash flows", "net cash"),
+    "tax": ("income taxes", "effective tax"),
+    "impair": ("impairment charges", "asset impairment"),
+    "acquisition": ("business acquisitions", "purchase consideration"),
+    "lease": ("lease liabilities", "operating leases"),
+    "segment": ("reportable segments", "segment results"),
+}
+
+
+def _finance_expansions(question: str) -> tuple[str, ...]:
+    normalized = question.casefold()
+    expansions: list[str] = []
+    for marker, values in _FINANCE_QUERY_EXPANSIONS.items():
+        if marker in normalized:
+            expansions.extend(values)
+    years = tuple(dict.fromkeys(re.findall(r"(?:19|20)\d{2}", normalized)))
+    if years:
+        expansions.extend(f"{phrase} {year}" for phrase in tuple(expansions) for year in years[:2])
+    return tuple(dict.fromkeys(expansions))
+
+
+def _pdf_search_queries(question: str) -> tuple[str, ...]:
+    """Create label-free lexical probes suited to page-level financial evidence."""
+
+    tokens = [
+        token
+        for token in re.findall(r"[a-z]+|(?:19|20)\d{2}", question.casefold())
+        if token not in _PDF_QUERY_STOPWORDS and (len(token) > 2 or token.isdigit())
+    ]
+    salient = tuple(dict.fromkeys(tokens))
+    queries: list[str] = [question, *_finance_expansions(question)]
+    queries.extend(" ".join(pair) for pair in pairwise(salient))
+    queries.extend(token for token in salient if len(token) >= 7 or token.isdigit())
+    return tuple(dict.fromkeys(query for query in queries if query.strip()))
 
 
 __all__ = [

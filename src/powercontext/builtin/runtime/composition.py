@@ -651,10 +651,14 @@ async def open_builtin_runtime(
                 scheduled_source_runner=scheduled_source_runner,
                 scheduled_experience_runner=scheduled_experience_runner,
                 remote_ingestion=contexts,
+                lifecycle_service=contexts.source_lifecycle,
             )
         )
         runtime.artifact_processing_supervisor = await resources.enter_async_context(
             _open_artifact_processing_supervisor(config, contexts, processing_bindings, tracing=tracing)
+        )
+        contexts.records.set_processing_notifier(
+            None if runtime.artifact_processing_supervisor is None else runtime.artifact_processing_supervisor.wake
         )
         contexts.profiles.operation_context = runtime._operation
         if config.handoff_report.enabled:
@@ -947,6 +951,8 @@ async def open_builtin_contexts(
                 model_usage_queue_capacity=config.runtime.model_usage_queue_capacity,
                 model_usage_write_timeout_seconds=config.runtime.model_usage_write_timeout_seconds,
                 model_usage_flush_timeout_seconds=config.runtime.model_usage_flush_timeout_seconds,
+                memory_source_count_threshold=config.runtime.memory_source_count_threshold,
+                topic_memory_source_count_threshold=config.runtime.topic_memory_source_count_threshold,
                 source_registry=source_registry,
                 cursor_secret=cursor_secret,
                 tracing=tracing,
@@ -1024,6 +1030,8 @@ async def open_builtin_contexts(
             model_usage_queue_capacity=config.runtime.model_usage_queue_capacity,
             model_usage_write_timeout_seconds=config.runtime.model_usage_write_timeout_seconds,
             model_usage_flush_timeout_seconds=config.runtime.model_usage_flush_timeout_seconds,
+            memory_source_count_threshold=config.runtime.memory_source_count_threshold,
+            topic_memory_source_count_threshold=config.runtime.topic_memory_source_count_threshold,
             source_registry=source_registry,
             cursor_secret=cursor_secret,
             tracing=tracing,

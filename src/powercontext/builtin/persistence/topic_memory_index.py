@@ -55,6 +55,17 @@ class TopicMemoryIndex(Protocol):
         /,
     ) -> None: ...
 
+    async def set_lifecycle_active(
+        self,
+        connection: AsyncConnection,
+        scope_id: str,
+        topic_ref: ArtifactRef,
+        projection: TopicMemoryProjection,
+        /,
+        *,
+        active: bool,
+    ) -> None: ...
+
     async def search(
         self,
         connection: AsyncConnection,
@@ -92,6 +103,9 @@ class NoTopicMemoryIndex:
         _projection: TopicMemoryProjection,
         /,
     ) -> None:
+        pass
+
+    async def set_lifecycle_active(self, _connection, _scope_id, _topic_ref, _projection, /, *, active: bool) -> None:
         pass
 
     async def search(
@@ -149,6 +163,10 @@ class CompositeTopicMemoryIndex:
     ) -> None:
         for index in self.indexes:
             await index.replace(connection, scope_id, topic_ref, projection)
+
+    async def set_lifecycle_active(self, connection, scope_id, topic_ref, projection, /, *, active: bool) -> None:
+        for index in self.indexes:
+            await index.set_lifecycle_active(connection, scope_id, topic_ref, projection, active=active)
 
     async def search(
         self,

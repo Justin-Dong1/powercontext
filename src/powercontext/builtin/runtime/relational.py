@@ -190,6 +190,7 @@ from powercontext.builtin.runtime.protocols import (
 )
 from powercontext.builtin.runtime.recall import RelationalRecallTokenEstimator
 from powercontext.builtin.runtime.recurrence import RelationalRecurrenceLedger
+from powercontext.builtin.runtime.source_lifecycle import ScopedSourceLifecycleService
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics
 from powercontext.builtin.scope import ScopeApplication
 from powercontext.builtin.scope.subject_sources import SubjectSourceService
@@ -547,6 +548,8 @@ class RelationalContexts:
         model_usage_queue_capacity: int = 256,
         model_usage_write_timeout_seconds: float = 1.0,
         model_usage_flush_timeout_seconds: float = 0.5,
+        memory_source_count_threshold: int | None = None,
+        topic_memory_source_count_threshold: int | None = None,
     ) -> None:
         self.database = database
         self.scopes = ScopeApplication(database, cursor_secret=cursor_secret)
@@ -664,6 +667,14 @@ class RelationalContexts:
             cursor_secret=cursor_secret,
             processing_pending=self.repositories.processing_pending,
             source_processing_bindings=(TOPIC_MEMORY_SOURCE_WINDOW_BINDING,),
+            source_count_thresholds={
+                binding: threshold
+                for binding, threshold in (
+                    (SOURCE_WINDOW_TRIGGER_NAME, memory_source_count_threshold),
+                    (TOPIC_MEMORY_SOURCE_WINDOW_BINDING, topic_memory_source_count_threshold),
+                )
+                if threshold is not None
+            },
             topic_memory_list_reader=TopicMemoryArtifactListReader(
                 database=database,
                 artifacts=artifact_repository,
@@ -765,6 +776,22 @@ class RelationalContexts:
         """Return model-backed reviewed generation bound to one scope."""
 
         return self._services_for(scope_id).generation()
+
+    def source_lifecycle(self, scope_id: str, /) -> ScopedSourceLifecycleService:
+        services = self._services_for(scope_id)
+
+        def memory_service() -> MemoryService:
+            _, catalog = services.sources()
+            return services.memory(catalog)
+
+        return ScopedSourceLifecycleService(
+            database=self.database,
+            scope_id=scope_id,
+            sources=self.repositories.sources,
+            artifacts=self.repositories.artifacts,
+            topics=self.repositories.topic_memories,
+            memory=memory_service,
+        )
 
     def statistics(self, scope_id: str, /) -> RelationalScopedStatistics:
         """Return product statistics bound to one scope."""
