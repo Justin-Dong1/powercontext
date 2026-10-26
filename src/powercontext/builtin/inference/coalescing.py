@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from collections import OrderedDict, deque
 from dataclasses import dataclass
 
@@ -51,8 +52,13 @@ class CoalescingEmbeddingModel:
             raise ValueError("max_batch_size must be a positive integer")  # noqa: TRY003
         if isinstance(cache_size, bool) or not isinstance(cache_size, int) or cache_size < 0:
             raise ValueError("cache_size must be a non-negative integer")  # noqa: TRY003
-        if isinstance(coalesce_ms, bool) or not isinstance(coalesce_ms, (int, float)) or coalesce_ms < 0:
-            raise ValueError("coalesce_ms must be a non-negative number")  # noqa: TRY003
+        if (
+            isinstance(coalesce_ms, bool)
+            or not isinstance(coalesce_ms, (int, float))
+            or not math.isfinite(coalesce_ms)
+            or coalesce_ms < 0
+        ):
+            raise ValueError("coalesce_ms must be a finite non-negative number")  # noqa: TRY003
         self._model = model
         self.profile = model.profile
         self._max_batch_size = max_batch_size
@@ -63,6 +69,7 @@ class CoalescingEmbeddingModel:
         self._queue: deque[str] = deque()
         self._dispatcher: asyncio.Task[None] | None = None
         self._next_batch_id = 0
+        self._workers: set[asyncio.Task[None]] = set()
 
     async def embed(self, texts: tuple[str, ...], /) -> EmbeddingResult:
         if not texts:
@@ -80,6 +87,7 @@ class CoalescingEmbeddingModel:
             future = self._inflight.get(text)
             if future is None:
                 future = loop.create_future()
+                future.add_done_callback(_observe_failure)
                 self._inflight[text] = future
                 self._queue.append(text)
             pending[text] = future
@@ -110,39 +118,48 @@ class CoalescingEmbeddingModel:
             ),
         )
 
-    async def _dispatch(self) -> None:  # noqa: C901
-        if self._coalesce_seconds:
-            await asyncio.sleep(self._coalesce_seconds)
-        else:
-            await asyncio.sleep(0)
+    async def _dispatch(self) -> None:
+        await asyncio.sleep(self._coalesce_seconds)
         while self._queue:
             texts = tuple(self._queue.popleft() for _ in range(min(self._max_batch_size, len(self._queue))))
             self._next_batch_id += 1
-            batch_id = self._next_batch_id
-            futures = {text: self._inflight[text] for text in texts}
-            try:
-                result = await self._model.embed(texts)
-                if len(result.vectors) != len(texts):
-                    raise ValueError(  # noqa: TRY003, TRY301
-                        "embedding model returned an unexpected number of vectors"
-                    )
-                for text, vector in zip(texts, result.vectors, strict=True):
-                    if self._cache_size:
-                        self._cache[text] = vector
-                        self._cache.move_to_end(text)
-                        while len(self._cache) > self._cache_size:
-                            self._cache.popitem(last=False)
-                    future = futures[text]
-                    if not future.done():
-                        future.set_result(_ResolvedEmbedding(vector=vector, batch_id=batch_id, usage=result.usage))
-            except BaseException as error:
-                for future in futures.values():
-                    if not future.done():
-                        future.set_exception(error)
-            finally:
-                for text, future in futures.items():
-                    if self._inflight.get(text) is future:
-                        del self._inflight[text]
+            worker = asyncio.create_task(self._run_batch(texts, self._next_batch_id))
+            self._workers.add(worker)
+            worker.add_done_callback(self._workers.discard)
+
+    async def _run_batch(self, texts: tuple[str, ...], batch_id: int) -> None:
+        futures = {text: self._inflight[text] for text in texts}
+        try:
+            result = await self._model.embed(texts)
+            if len(result.vectors) != len(texts):
+                raise ValueError("embedding model returned an unexpected number of vectors")  # noqa: TRY003, TRY301
+            for text, vector in zip(texts, result.vectors, strict=True):
+                if self._cache_size:
+                    self._cache[text] = vector
+                    self._cache.move_to_end(text)
+                    while len(self._cache) > self._cache_size:
+                        self._cache.popitem(last=False)
+                if not futures[text].done():
+                    futures[text].set_result(_ResolvedEmbedding(vector=vector, batch_id=batch_id, usage=result.usage))
+        except asyncio.CancelledError:
+            for future in futures.values():
+                if not future.done():
+                    future.cancel()
+            raise
+        except Exception as error:
+            for future in futures.values():
+                if not future.done():
+                    future.set_exception(error)
+        finally:
+            for text, future in futures.items():
+                if self._inflight.get(text) is future:
+                    del self._inflight[text]
+
+
+def _observe_failure(future: asyncio.Future[_ResolvedEmbedding]) -> None:
+    # A cancelled or failed caller may no longer await every shared text.
+    if not future.cancelled():
+        future.exception()
 
 
 __all__ = ["CoalescingEmbeddingModel"]

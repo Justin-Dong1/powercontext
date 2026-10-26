@@ -36,7 +36,7 @@ class HTTPMemoryReranker:
         batch_size: int = 32,
         policy_id: str = "http-cross-encoder-v1",
     ) -> None:
-        if batch_size < 1:
+        if type(batch_size) is not int or batch_size < 1:
             raise ValueError("batch_size must be positive")
         self.endpoint = endpoint
         self.client = client
@@ -52,7 +52,7 @@ class HTTPMemoryReranker:
     ) -> MemoryRerankDecision:
         if not candidates:
             raise ValueError("rerank requires at least one candidate")
-        if limit < 1 or limit > len(candidates):
+        if type(limit) is not int or limit < 1 or limit > len(candidates):
             raise ValueError("rerank limit must be between one and the candidate count")
 
         scores: dict[int, float] = {}

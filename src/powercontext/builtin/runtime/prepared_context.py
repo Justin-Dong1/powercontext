@@ -291,26 +291,30 @@ class PreparedContextBuilder:
                     entry_id=hit.entry_id,
                     entry_version_id=hit.entry_version_id,
                 )
-                passage = _best_evidence_passage(hit.text, query_terms)
-                if passage is None:
-                    continue
-                start, end, score = passage
-                candidates.append((
-                    score,
-                    rank,
-                    PreparedContextFragment(
-                        address=address,
-                        start=start,
-                        end=end,
-                        text=hit.text[start:end],
-                    ),
-                ))
+                for start, end, score in _evidence_passages(hit.text, query_terms):
+                    candidates.append((
+                        score,
+                        rank,
+                        PreparedContextFragment(
+                            address=address,
+                            start=start,
+                            end=end,
+                            text=hit.text[start:end],
+                        ),
+                    ))
 
         candidates.sort(key=lambda item: (-item[0], item[1], item[2].start))
         fragments: list[PreparedContextFragment] = []
         origins: list[PreparedContextOrigin] = []
         content: str | None = None
         for _, _, fragment in candidates:
+            if any(
+                chosen.address == fragment.address
+                and chosen.start < fragment.end
+                and fragment.start < chosen.end
+                for chosen in fragments
+            ):
+                continue
             trial = (*fragments, fragment)
             rendered = _render_fragments(trial)
             if len(rendered.encode("utf-8")) > request.max_bytes:
@@ -872,6 +876,30 @@ def _best_evidence_passage(text: str, query_terms: Sequence[str]) -> tuple[int, 
         start = sentences[first][0]
         end = sentences[last][1]
     return start, end, score
+
+
+def _evidence_passages(text: str, query_terms: Sequence[str]) -> tuple[tuple[int, int, float], ...]:
+    """Offer context windows and individual sentences without changing the evidence."""
+    best = _best_evidence_passage(text, query_terms)
+    if best is None:
+        return ()
+    passages = [best]
+    seen = {(best[0], best[1])}
+    query_set = set(query_terms)
+    for sentence in _SELECTION_SENTENCE.finditer(text):
+        start, end = sentence.span()
+        if not sentence.group().strip() or (start, end) in seen:
+            continue
+        terms = _selection_terms(sentence.group())
+        overlap = query_set.intersection(terms)
+        if query_set and not overlap:
+            continue
+        score = sum(2.0 + min(terms.count(term), 2) for term in overlap)
+        if query_set and query_set.issubset(terms):
+            score += 4.0
+        passages.append((start, end, score))
+        seen.add((start, end))
+    return tuple(passages)
 
 
 def _render_fragments(fragments: Sequence[PreparedContextFragment]) -> str:

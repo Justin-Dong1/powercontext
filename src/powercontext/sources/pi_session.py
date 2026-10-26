@@ -108,7 +108,9 @@ def _parse_archive(content: bytes) -> tuple[str, dict[str, dict[str, JsonValue]]
         if not isinstance(value, dict):
             raise ValueError("Pi session event records must be JSON objects")
         event_id = value.get("id")
-        parent_id = value.get("parentId")
+        if "parentId" not in value:
+            raise ValueError("Pi session events must explicitly declare parentId")
+        parent_id = value["parentId"]
         if not isinstance(event_id, str) or not event_id:
             raise ValueError("Pi session event ids must be non-empty strings")
         if event_id in by_id:
