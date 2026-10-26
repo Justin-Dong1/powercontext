@@ -31,6 +31,7 @@ from powercontext.builtin.dream.generation import DreamGenerator
 from powercontext.builtin.inference.usage import bind_usage_reporter
 from powercontext.builtin.persistence.dream import DreamRepository
 from powercontext.builtin.persistence.errors import ArtifactProcessingLeadershipLostError, GenerationConflictError
+from powercontext.builtin.persistence.processing_intents import ArtifactProcessingIntentRepository
 from powercontext.builtin.runtime.config import BuiltinConfig
 from powercontext.builtin.runtime.processing_contracts import (
     ArtifactProcessingWorkAssignment,
@@ -210,6 +211,14 @@ async def _process_family_invocation(  # noqa: C901 - one guarded dispatch per r
                 authorize_snapshot=None if security is None else partial(security.authorize_memory, scope),
                 on_commit=None if security is None else partial(security.memory_commit, scope_id=scope),
             )
+            threshold = config.runtime.memory_source_count_threshold
+            if threshold is not None:
+                await _request_remaining_memory_window(
+                    contexts,
+                    assignment,
+                    cursor=result.current_cursor,
+                    threshold=threshold,
+                )
             if result.held_count:
                 return ArtifactProcessingWorkerCompletion(held_count=result.held_count, hold_codes=result.hold_codes)
         elif assignment.artifact_family == "experience":
@@ -240,3 +249,29 @@ async def _process_family_invocation(  # noqa: C901 - one guarded dispatch per r
     except ArtifactProcessingLeadershipLostError:
         return ArtifactProcessingWorkerCompletion(ArtifactProcessingWorkerOutcome.LEADERSHIP_LOST)
     return ArtifactProcessingWorkerCompletion()
+
+
+async def _request_remaining_memory_window(
+    contexts: RelationalContexts,
+    assignment: ArtifactProcessingWorkAssignment,
+    *,
+    cursor: int,
+    threshold: int,
+) -> None:
+    """Re-apply count admission after one bounded Memory window succeeds.
+
+    Captures can arrive while the current request is running.  They cannot request a second
+    generation until the current one is acknowledged, so the successful worker must compare
+    the latest journal head with its new cursor.  The request is persisted in the same locked
+    intent row that capture-side admission uses; the supervisor observes it when this worker
+    returns.
+    """
+
+    async with contexts.database.transaction() as connection:
+        high_watermark = await contexts.repositories.sources.journal_position(connection, assignment.scope_id)
+        if high_watermark - cursor < threshold:
+            return
+        intents = ArtifactProcessingIntentRepository()
+        intent = await intents.load(connection, assignment.scope_id, assignment.binding_name, for_update=True)
+        if intent is not None and intent.requested_generation <= intent.handled_generation:
+            await intents.request(connection, assignment.scope_id, assignment.binding_name)

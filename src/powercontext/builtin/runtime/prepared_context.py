@@ -17,7 +17,9 @@
 from __future__ import annotations
 
 import json
+import math
 import re
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from itertools import chain
@@ -271,7 +273,7 @@ class PreparedContextBuilder:
             omissions=omissions,
         )
 
-    def _build_evidence_selection(
+    def _build_evidence_selection(  # noqa: C901 - bounded fragment ranking and packing
         self,
         request: PrepareContextRequest,
         memory_candidates: Sequence[PreparedMemoryCandidates],
@@ -309,9 +311,7 @@ class PreparedContextBuilder:
         content: str | None = None
         for _, _, fragment in candidates:
             if any(
-                chosen.address == fragment.address
-                and chosen.start < fragment.end
-                and fragment.start < chosen.end
+                chosen.address == fragment.address and chosen.start < fragment.end and fragment.start < chosen.end
                 for chosen in fragments
             ):
                 continue
@@ -847,58 +847,63 @@ def _selection_terms(text: str) -> tuple[str, ...]:
     )
 
 
-def _best_evidence_passage(text: str, query_terms: Sequence[str]) -> tuple[int, int, float] | None:
-    sentences = [(match.start(), match.end()) for match in _SELECTION_SENTENCE.finditer(text) if match.group().strip()]
-    if not sentences and text.strip():
-        start = len(text) - len(text.lstrip())
-        return start, len(text.rstrip()), 0.0
-    if not sentences:
-        return None
-    scored: list[tuple[float, int]] = []
-    query_set = set(query_terms)
-    for index, (start, end) in enumerate(sentences):
-        terms = _selection_terms(text[start:end])
-        overlap = query_set.intersection(terms)
-        score = sum(2.0 + min(terms.count(term), 2) for term in overlap)
-        if query_terms and all(term in terms for term in query_set):
-            score += 4.0
-        scored.append((score, index))
-    score, best = max(scored, key=lambda item: (item[0], -item[1]))
-    first = max(0, best - 1)
-    last = min(len(sentences) - 1, best + 1)
-    start = sentences[first][0]
-    end = sentences[last][1]
-    while end - start > 720 and first < last:
-        if best - first >= last - best:
-            first += 1
-        else:
-            last -= 1
-        start = sentences[first][0]
-        end = sentences[last][1]
-    return start, end, score
-
-
 def _evidence_passages(text: str, query_terms: Sequence[str]) -> tuple[tuple[int, int, float], ...]:
-    """Offer context windows and individual sentences without changing the evidence."""
-    best = _best_evidence_passage(text, query_terms)
-    if best is None:
-        return ()
-    passages = [best]
-    seen = {(best[0], best[1])}
+    """Offer literal, query-ranked sentence windows without changing the evidence.
+
+    Scientific claims often repeat the article title while their supporting result occurs near
+    the end of the abstract.  Ranking only the sentence with the most query words therefore
+    over-selects titles and ``BACKGROUND`` sections.  Score every sentence with within-document
+    inverse frequency, modest result/conclusion cues, and a small position prior, then offer
+    contiguous windows.  The caller still measures the complete rendered envelope and can fall
+    back from a large window to a smaller one when the byte budget is tight.
+    """
+
+    matches = tuple(match for match in _SELECTION_SENTENCE.finditer(text) if match.group().strip())
+    if not matches:
+        if not text.strip():
+            return ()
+        start = len(text) - len(text.lstrip())
+        return ((start, len(text.rstrip()), 0.0),)
+
     query_set = set(query_terms)
-    for sentence in _SELECTION_SENTENCE.finditer(text):
-        start, end = sentence.span()
-        if not sentence.group().strip() or (start, end) in seen:
-            continue
-        terms = _selection_terms(sentence.group())
+    sentence_terms = tuple(_selection_terms(match.group()) for match in matches)
+    document_frequency = Counter(term for terms in sentence_terms for term in set(terms))
+    sentence_scores: list[float] = []
+    last_index = max(1, len(matches) - 1)
+    for index, (match, terms) in enumerate(zip(matches, sentence_terms, strict=True)):
+        counts = Counter(terms)
         overlap = query_set.intersection(terms)
-        if query_set and not overlap:
-            continue
-        score = sum(2.0 + min(terms.count(term), 2) for term in overlap)
-        if query_set and query_set.issubset(terms):
-            score += 4.0
-        passages.append((start, end, score))
-        seen.add((start, end))
+        score = sum(
+            (1.0 + math.log((len(matches) + 1) / (document_frequency[term] + 1))) * (1.0 + 0.2 * min(counts[term], 2))
+            for term in overlap
+        )
+        score += 0.3 * len(overlap) / max(1, len(query_set))
+        normalized = match.group().casefold()
+        if re.search(
+            r"\b(results?|conclusions?|findings?|we (?:found|show|demonstrate|observed)|"
+            r"associated|resulted|increased|decreased|reduced|higher|lower|compared)\b",
+            normalized,
+        ):
+            score += 0.8
+        if re.search(r"\b(background|context|objective|purpose|introduction)\b", normalized):
+            score -= 1.0
+        if index == 0:
+            score -= 0.8
+        score += 0.15 * index / last_index
+        sentence_scores.append(score)
+
+    passages: list[tuple[int, int, float]] = []
+    for first in range(len(matches)):
+        for last in range(first, min(len(matches), first + 8)):
+            start, end = matches[first].start(), matches[last].end()
+            length = end - start
+            if length > 1_200:
+                break
+            window_terms = set(chain.from_iterable(sentence_terms[first : last + 1]))
+            coverage = len(query_set.intersection(window_terms)) / max(1, len(query_set))
+            score = sum(sorted(sentence_scores[first : last + 1], reverse=True)[:3])
+            score += 1.5 * coverage - 0.0005 * length
+            passages.append((start, end, score))
     return tuple(passages)
 
 

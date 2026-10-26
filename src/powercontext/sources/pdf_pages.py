@@ -68,7 +68,13 @@ def pdf_page_source_id(document_id: str, document_sha256: str, page_number: int)
         raise ValueError("document_sha256 must be a lowercase SHA-256 digest")  # noqa: TRY003
     if page_number < 1:
         raise ValueError("page_number must be positive")  # noqa: TRY003
-    source_id = f"pdf:{quote(document_id, safe='')}:{document_sha256}:{page_number}"
+    encoded_document_id = quote(document_id, safe="")
+    source_id = f"pdf:{encoded_document_id}:{document_sha256}:{page_number}"
+    if len(source_id) > MAX_SOURCE_ID_LENGTH:
+        # Preserve stable revision/page identity for arbitrarily long public document IDs
+        # without truncating two different IDs to the same prefix.
+        document_identity = hashlib.sha256(document_id.encode("utf-8")).hexdigest()
+        source_id = f"pdf-sha256:{document_identity}:{document_sha256}:{page_number}"
     if len(source_id) > MAX_SOURCE_ID_LENGTH:
         raise ValueError(f"source_id must not exceed {MAX_SOURCE_ID_LENGTH} characters")  # noqa: TRY003
     return source_id
@@ -158,9 +164,11 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         raise ValueError("limit must be positive")  # noqa: TRY003
     queries = _pdf_search_queries(question)
     ranked: dict[tuple[str, str, str], tuple[float, MemoryCitation]] = {}
+    priority: list[tuple[str, str, str]] = []
+    expansion_queries = frozenset(_finance_expansions(question))
     for query_index, query in enumerate(queries):
         page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 40)))
-        weight = 1.25 if query_index and query in _finance_expansions(question) else 1.0
+        weight = 1.25 if query_index and query in expansion_queries else 1.0
         for rank, hit in enumerate(page.hits, start=1):
             citation = MemoryCitation(
                 memory_ref=hit.memory_ref,
@@ -170,14 +178,27 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
             identity = (hit.memory_ref.artifact_id, hit.entry_id, hit.entry_version_id)
             score, _ = ranked.get(identity, (0.0, citation))
             ranked[identity] = (score + weight / (8 + rank), citation)
+            # Preserve a small quota from each semantic financial probe before
+            # fused lexical results can crowd it out.  Multi-metric questions
+            # commonly require different statement pages (for example income
+            # and cash-flow statements), so summing every token probe alone is
+            # systematically biased toward pages matching many generic words.
+            if rank <= 2 and (query_index == 0 or query in expansion_queries) and identity not in priority:
+                priority.append(identity)
 
     citations: list[MemoryCitation] = []
     seen_sources: set[str] = set()
-    ordered = sorted(
-        ranked.values(),
-        key=lambda item: (-item[0], item[1].entry_id, item[1].entry_version_id),
+    fused = sorted(
+        ranked,
+        key=lambda identity: (
+            -ranked[identity][0],
+            ranked[identity][1].entry_id,
+            ranked[identity][1].entry_version_id,
+        ),
     )
-    for _score, citation in ordered:
+    ordered = tuple(dict.fromkeys((*priority, *fused)))
+    for identity in ordered:
+        citation = ranked[identity][1]
         entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
         source_ids = tuple(source.source_id for source in entry.sources if source.source_type == PDF_PAGE_SOURCE_NAME)
         if not source_ids or any(source_id in seen_sources for source_id in source_ids):
@@ -225,10 +246,21 @@ _PDF_QUERY_STOPWORDS = frozenset({
 })
 
 _FINANCE_QUERY_EXPANSIONS = {
-    "geograph": ("geographic areas", "geographic divisions", "international markets"),
+    "geograph": (
+        "reportable segments",
+        "our operations",
+        "geographic areas",
+        "countries territories",
+        "international markets",
+    ),
     "legal": ("legal proceedings", "material litigation"),
     "restructur": ("restructuring charges", "restructuring costs"),
-    "ebitda": ("operating profit", "operating income", "depreciation amortization"),
+    "ebitda": (
+        "operating profit",
+        "depreciation amortization",
+        "consolidated statement income",
+        "consolidated statement cash flows",
+    ),
     "capex": ("capital expenditures", "capital spending"),
     "margin": ("net revenue", "net sales", "operating income"),
     "revenue": ("net revenue", "net sales"),
