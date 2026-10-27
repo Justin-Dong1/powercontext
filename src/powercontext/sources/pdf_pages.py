@@ -25,7 +25,7 @@ from urllib.parse import quote
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from powercontext.builtin.artifacts.memory.models import MemoryCitation
+from powercontext.builtin.artifacts.memory.models import MemoryCitation, MemoryEntryVersion
 from powercontext.builtin.runtime import GetMemoryEntryRequest, SearchMemoryRequest
 from powercontext.limits import MAX_SOURCE_ID_LENGTH
 from powercontext.sources.definitions import AdapterSourceDefinition
@@ -157,6 +157,54 @@ PDF_PAGE_SOURCE_DEFINITION = AdapterSourceDefinition(
 )
 
 
+def _pdf_heading_match(text: str, query: str) -> float:
+    """Prefer precise, early evidence lines over repeated terms in prose."""
+
+    def terms(value: str) -> frozenset[str]:
+        normalized = []
+        for word in re.findall(r"[a-z]+", value.casefold()):
+            if word in {"of", "the", "and", "to", "for", "at", "in", "from", "our"}:
+                continue
+            if word.endswith("ies") and len(word) > 4:
+                word = word[:-3] + "y"
+            elif word.endswith("s") and not word.endswith("ss") and len(word) > 4:
+                word = word[:-1]
+            normalized.append(word)
+        return frozenset(normalized)
+
+    wanted = terms(query)
+    if not wanted:
+        return 0.0
+    # The standard projection starts with the document identifier. Score only
+    # the page body; source identity is not evidence for the question.
+    body = text.partition("\n")[2]
+    leading = [line.strip() for line in body[:1600].splitlines() if line.strip()][:12]
+    best = 0.0
+    for index, line in enumerate(leading):
+        if len(line) <= 160 and len(re.findall(r"[a-z]+", line.casefold())) <= 16:
+            found = terms(line)
+            if found:
+                precision_recall = 2 * len(wanted & found) / (len(wanted) + len(found))
+                best = max(best, precision_recall / (1 + index / 12))
+    return best
+
+
+async def _prioritize_pdf_heading_hits(memory, hits, query: str, entries):
+    """Load exact candidate evidence once and retain search rank for ties."""
+    scored = []
+    for original_rank, hit in enumerate(hits):
+        identity = (hit.memory_ref.artifact_id, hit.entry_id, hit.entry_version_id)
+        if identity not in entries:
+            citation = MemoryCitation(
+                memory_ref=hit.memory_ref,
+                entry_id=hit.entry_id,
+                entry_version_id=hit.entry_version_id,
+            )
+            entries[identity] = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
+        scored.append((-_pdf_heading_match(entries[identity].text, query), original_rank, hit))
+    return [item[2] for item in sorted(scored, key=lambda item: (item[0], item[1]))]
+
+
 async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[MemoryCitation, ...]:
     """Search a scoped Memory and return distinct, exact page citations."""
 
@@ -165,11 +213,15 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     queries = _pdf_search_queries(question)
     ranked: dict[tuple[str, str, str], tuple[float, MemoryCitation]] = {}
     priority: list[tuple[str, str, str]] = []
+    entries: dict[tuple[str, str, str], MemoryEntryVersion] = {}
     expansion_queries = frozenset(_finance_expansions(question))
     for query_index, query in enumerate(queries):
         page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 40)))
         weight = 1.25 if query_index and query in expansion_queries else 1.0
-        for rank, hit in enumerate(page.hits, start=1):
+        hits = list(page.hits)
+        if query in expansion_queries:
+            hits = await _prioritize_pdf_heading_hits(memory, hits, query, entries)
+        for rank, hit in enumerate(hits, start=1):
             citation = MemoryCitation(
                 memory_ref=hit.memory_ref,
                 entry_id=hit.entry_id,
@@ -199,7 +251,9 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     ordered = tuple(dict.fromkeys((*priority, *fused)))
     for identity in ordered:
         citation = ranked[identity][1]
-        entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
+        entry = entries.get(identity)
+        if entry is None:
+            entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
         source_ids = tuple(source.source_id for source in entry.sources if source.source_type == PDF_PAGE_SOURCE_NAME)
         if not source_ids or any(source_id in seen_sources for source_id in source_ids):
             continue
