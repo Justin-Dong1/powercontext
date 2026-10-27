@@ -18,14 +18,16 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
+from collections import Counter
 from itertools import pairwise
 from urllib.parse import quote
 
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from powercontext.builtin.artifacts.memory.models import MemoryCitation
+from powercontext.builtin.artifacts.memory.models import MemoryCitation, MemoryHit
 from powercontext.builtin.runtime import GetMemoryEntryRequest, SearchMemoryRequest
 from powercontext.limits import MAX_SOURCE_ID_LENGTH
 from powercontext.sources.definitions import AdapterSourceDefinition
@@ -163,42 +165,35 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     if limit < 1:
         raise ValueError("limit must be positive")  # noqa: TRY003
     queries = _pdf_search_queries(question)
-    ranked: dict[tuple[str, str, str], tuple[float, MemoryCitation]] = {}
-    priority: list[tuple[str, str, str]] = []
-    expansion_queries = frozenset(_finance_expansions(question))
-    for query_index, query in enumerate(queries):
-        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 40)))
-        weight = 1.25 if query_index and query in expansion_queries else 1.0
-        for rank, hit in enumerate(page.hits, start=1):
-            citation = MemoryCitation(
-                memory_ref=hit.memory_ref,
-                entry_id=hit.entry_id,
-                entry_version_id=hit.entry_version_id,
-            )
+    candidates: dict[tuple[str, str, str], MemoryHit] = {}
+    for query in queries:
+        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 6, 120)))
+        for hit in page.hits:
             identity = (hit.memory_ref.artifact_id, hit.entry_id, hit.entry_version_id)
-            score, _ = ranked.get(identity, (0.0, citation))
-            ranked[identity] = (score + weight / (8 + rank), citation)
-            # Preserve a small quota from each semantic financial probe before
-            # fused lexical results can crowd it out.  Multi-metric questions
-            # commonly require different statement pages (for example income
-            # and cash-flow statements), so summing every token probe alone is
-            # systematically biased toward pages matching many generic words.
-            if rank <= 2 and (query_index == 0 or query in expansion_queries) and identity not in priority:
-                priority.append(identity)
+            candidates[identity] = hit
+
+    # Every page projection begins with its document ID. Discover matching
+    # documents from retrieved content, never from a corpus-specific name list.
+    question_words = set(_pdf_words(question))
+    matching_documents = {
+        hit.text.partition("\n")[0]
+        for hit in candidates.values()
+        if _document_matches(hit.text.partition("\n")[0], question_words)
+    }
+    for document in sorted(matching_documents):
+        page = await memory.search(SearchMemoryRequest(query=document, mode="fts", limit=2048))
+        for hit in page.hits:
+            if hit.text.partition("\n")[0] == document:
+                candidates[(hit.memory_ref.artifact_id, hit.entry_id, hit.entry_version_id)] = hit
+
+    ordered = _rank_pdf_hits(tuple(candidates.values()), question, matching_documents)
 
     citations: list[MemoryCitation] = []
     seen_sources: set[str] = set()
-    fused = sorted(
-        ranked,
-        key=lambda identity: (
-            -ranked[identity][0],
-            ranked[identity][1].entry_id,
-            ranked[identity][1].entry_version_id,
-        ),
-    )
-    ordered = tuple(dict.fromkeys((*priority, *fused)))
-    for identity in ordered:
-        citation = ranked[identity][1]
+    for hit in ordered:
+        citation = MemoryCitation(
+            memory_ref=hit.memory_ref, entry_id=hit.entry_id, entry_version_id=hit.entry_version_id
+        )
         entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
         source_ids = tuple(source.source_id for source in entry.sources if source.source_type == PDF_PAGE_SOURCE_NAME)
         if not source_ids or any(source_id in seen_sources for source_id in source_ids):
@@ -208,6 +203,82 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         if len(citations) == limit:
             break
     return tuple(citations)
+
+
+def _pdf_words(text: str) -> tuple[str, ...]:
+    # Normalize common PDF ligatures and inflections without altering evidence.
+    text = text.casefold().replace("ﬁ", "fi").replace("ﬂ", "fl")
+    return tuple(
+        word[:-1] if len(word) > 4 and word.endswith("s") else word for word in re.findall(r"[a-z]+|\d+", text)
+    )
+
+
+def _document_matches(document: str, question_words: set[str]) -> bool:
+    words = set(_pdf_words(document)) - {"annual", "report", "inc", "corp", "corporation", "company", "10", "k", "q"}
+    words = {word for word in words if not word.isdigit() and len(word) > 1}
+    return bool(words) and words <= question_words
+
+
+def _rank_pdf_hits(hits: tuple[MemoryHit, ...], question: str, documents: set[str]) -> tuple[MemoryHit, ...]:
+    """Rerank actual Memory hits with document scope and balanced query coverage.
+
+    Memory FTS uses OR, so a high rank for 'cash flows' does not imply that both
+    terms occur. Score complete probes against page text before reserving slots.
+    """
+    if documents:
+        hits = tuple(hit for hit in hits if hit.text.partition("\n")[0] in documents)
+    if not hits:
+        return ()
+    bodies = [hit.text.partition("\n")[2] for hit in hits]
+    counts = [Counter(_pdf_words(body)) for body in bodies]
+    frequency = Counter(word for count in counts for word in count)
+    average = max(1.0, sum(sum(count.values()) for count in counts) / len(counts))
+    stopwords = set(_pdf_words(" ".join(_PDF_QUERY_STOPWORDS)))
+    question_terms = set(_pdf_words(question)) - stopwords
+    document_terms = {word for document in documents for word in _pdf_words(document)}
+    question_terms -= document_terms
+
+    def lexical(index: int, terms: set[str]) -> float:
+        count = counts[index]
+        length = sum(count.values())
+        return sum(
+            math.log(1 + (len(hits) - frequency[word] + 0.5) / (frequency[word] + 0.5))
+            * count[word]
+            * 2.2
+            / (count[word] + 1.2 * (0.25 + 0.75 * length / average))
+            for word in terms
+            if count[word]
+        )
+
+    base = [lexical(index, question_terms) for index in range(len(hits))]
+    # One best page per distinct concept, then global relevance. Year variants
+    # must not consume additional reserved slots for the same concept.
+    probes = tuple(dict.fromkeys(re.sub(r"\s+(?:19|20)\d{2}$", "", probe) for probe in _finance_expansions(question)))
+    winners: dict[int, float] = {}
+    scores = list(base)
+    for probe in probes:
+        terms = set(_pdf_words(probe))
+        eligible = [index for index, count in enumerate(counts) if terms <= count.keys()]
+        if not eligible:
+            continue
+        probe_scores = {index: lexical(index, terms) for index in eligible}
+        # Prefer the actual statement heading over a passing prose reference.
+        for index in eligible:
+            heading_words = _pdf_words(bodies[index][:800])
+            heading = " ".join(word for word in heading_words if word not in {"of", "and", "the"})
+            phrase = " ".join(_pdf_words(probe))
+            if phrase in heading:
+                probe_scores[index] *= 2
+        winner = max(eligible, key=lambda index: (probe_scores[index], base[index], hits[index].entry_id))
+        winners[winner] = max(winners.get(winner, 0), probe_scores[winner])
+        peak = max(probe_scores.values()) or 1
+        for index in eligible:
+            scores[index] += probe_scores[index] / peak
+    priority = sorted(winners, key=lambda index: (-base[index] - winners[index], hits[index].entry_id))
+    # Bound the concept quota so broad questions still retain lexical evidence.
+    priority = priority[:10]
+    ranked = sorted(range(len(hits)), key=lambda index: (-scores[index], hits[index].entry_id))
+    return tuple(hits[index] for index in dict.fromkeys((*priority, *ranked)))
 
 
 _PDF_QUERY_STOPWORDS = frozenset({
@@ -254,7 +325,7 @@ _FINANCE_QUERY_EXPANSIONS = {
         "international markets",
     ),
     "legal": ("legal proceedings", "material litigation"),
-    "restructur": ("restructuring charges", "restructuring costs"),
+    "restructur": ("restructuring charges", "restructuring costs", "consolidated statement income"),
     "ebitda": (
         "operating profit",
         "depreciation amortization",
