@@ -159,6 +159,38 @@ PDF_PAGE_SOURCE_DEFINITION = AdapterSourceDefinition(
 )
 
 
+def _pdf_heading_match(text: str, query: str) -> float:
+    """Prefer precise, early evidence lines over repeated terms in prose."""
+
+    def terms(value: str) -> frozenset[str]:
+        normalized = []
+        for word in re.findall(r"[a-z]+", value.casefold()):
+            if word in {"of", "the", "and", "to", "for", "at", "in", "from", "our"}:
+                continue
+            if word.endswith("ies") and len(word) > 4:
+                word = word[:-3] + "y"
+            elif word.endswith("s") and not word.endswith("ss") and len(word) > 4:
+                word = word[:-1]
+            normalized.append(word)
+        return frozenset(normalized)
+
+    wanted = terms(query)
+    if not wanted:
+        return 0.0
+    # The standard projection starts with the document identifier. Score only
+    # the page body; source identity is not evidence for the question.
+    body = text.partition("\n")[2]
+    leading = [line.strip() for line in body[:1600].splitlines() if line.strip()][:12]
+    best = 0.0
+    for index, line in enumerate(leading):
+        if len(line) <= 160 and len(re.findall(r"[a-z]+", line.casefold())) <= 16:
+            found = terms(line)
+            if found:
+                precision_recall = 2 * len(wanted & found) / (len(wanted) + len(found))
+                best = max(best, precision_recall / (1 + index / 12))
+    return best
+
+
 async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[MemoryCitation, ...]:
     """Search a scoped Memory and return distinct, exact page citations."""
 
@@ -269,7 +301,15 @@ def _rank_pdf_hits(hits: tuple[MemoryHit, ...], question: str, documents: set[st
             phrase = " ".join(_pdf_words(probe))
             if phrase in heading:
                 probe_scores[index] *= 2
-        winner = max(eligible, key=lambda index: (probe_scores[index], base[index], hits[index].entry_id))
+        winner = max(
+            eligible,
+            key=lambda index: (
+                _pdf_heading_match(hits[index].text, probe),
+                probe_scores[index],
+                base[index],
+                hits[index].entry_id,
+            ),
+        )
         winners[winner] = max(winners.get(winner, 0), probe_scores[winner])
         peak = max(probe_scores.values()) or 1
         for index in eligible:
