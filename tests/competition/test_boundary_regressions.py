@@ -16,7 +16,7 @@ from powercontext.builtin.inference import EmbeddingResult
 from powercontext.builtin.inference.coalescing import CoalescingEmbeddingModel
 from powercontext.builtin.runtime import PrepareContextRequest
 from powercontext.builtin.runtime.prepared_context import PreparedContextBuilder, PreparedMemoryCandidates
-from powercontext.sources.pdf_pages import pdf_page_source_id
+from powercontext.sources.pdf_pages import _pdf_search_queries, pdf_page_source_id
 from powercontext.sources.pi_session import PiSessionInput, parse_pi_session
 
 
@@ -119,3 +119,17 @@ def test_pdf_page_identity_hashes_long_document_ids_without_truncation_collision
     right = pdf_page_source_id("report-" + "x" * 299 + "y", digest, 1)
     assert len(left) <= 256
     assert left != right
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    (
+        ("Is this a capital-intensive business?", "property plant equipment"),
+        ("Calculate days payable outstanding.", "total net sales operating expenses"),
+        ("What drove the revenue change?", "summary business segment data"),
+        ("Does the company have a healthy quick ratio?", "current liabilities"),
+        ("Who are the company's primary customers?", "government contracts"),
+    ),
+)
+def test_pdf_financial_questions_probe_their_supporting_statements(question, expected):
+    assert expected in _pdf_search_queries(question)
