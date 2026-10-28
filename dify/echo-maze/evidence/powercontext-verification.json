@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "server": {
+    "implementation": "PowerContext",
+    "version": "powercontext-v1.2.0-14-g816cc3e1",
+    "database": "SQLite test database",
+    "address": "http://127.0.0.1:18076"
+  },
+  "scope_id": "scp_05fyx7w060ybadg678m58xvpyr",
+  "executed_at": "2026-10-28T11:16:00+08:00",
+  "checks": [
+    {
+      "name": "remember and recall first choice",
+      "choice": "红门",
+      "hit_count": 1,
+      "matching_choice_count": 1,
+      "memory_revision": 1,
+      "matched_by": ["fts"]
+    },
+    {
+      "name": "same scope retains old choice and accepts a new choice",
+      "choice": "蓝门",
+      "hit_count": 2,
+      "matching_choice_count": 1,
+      "memory_revision": 2,
+      "matched_by": ["fts"]
+    },
+    {
+      "name": "third distinct choice preserves both earlier turns",
+      "choice": "无门之门",
+      "hit_count": 3,
+      "matching_choice_count": 1,
+      "memory_revision": 3,
+      "matched_by": ["fts"]
+    }
+  ],
+  "retrieved_text": [
+    "玩家 阿澈 在回声迷宫选择了红门，进入验证房间，这是可供后续回合召回的已确认游戏状态。",
+    "玩家 阿澈 在回声迷宫选择了蓝门，进入验证房间，这是可供后续回合召回的已确认游戏状态。",
+    "玩家 阿澈 在回声迷宫选择了无门之门，进入验证房间，这是可供后续回合召回的已确认游戏状态。"
+  ],
+  "secrets_in_evidence": false
+}

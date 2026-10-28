@@ -1,0 +1,357 @@
+app:
+  description: >-
+    回声迷宫是一款会记住玩家选择的文字迷宫。Dify 编排回忆、剧情生成和记忆写入，
+    PowerContext 保存跨运行历史，让同一位玩家再次选择时遇到不同的回声与路线。
+  icon: "🌀"
+  icon_background: '#E4D7FF'
+  mode: workflow
+  name: 回声迷宫 · Echo Maze
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+    - description: PowerContext Server 地址，不要包含末尾斜杠
+      id: powercontext-base-url
+      name: powercontext_base_url
+      selector:
+        - env
+        - powercontext_base_url
+      value: http://powercontext:8000
+      value_type: string
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: http-request
+        id: start-source-recall-target
+        source: start
+        sourceHandle: source
+        target: recall
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: http-request
+          targetType: code
+        id: recall-source-narrate-target
+        source: recall
+        sourceHandle: source
+        target: narrate
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: code
+          targetType: http-request
+        id: narrate-source-remember-target
+        source: narrate
+        sourceHandle: source
+        target: remember
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: http-request
+          targetType: end
+        id: remember-source-end-target
+        source: remember
+        sourceHandle: source
+        target: end
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          desc: 输入稳定的 PowerContext Scope、玩家昵称和本回合选择
+          selected: false
+          title: 进入迷宫
+          type: start
+          variables:
+            - label: PowerContext Scope ID
+              max_length: 256
+              options: []
+              required: true
+              type: text-input
+              variable: scope_id
+            - label: 玩家昵称
+              max_length: 40
+              options: []
+              required: true
+              type: text-input
+              variable: player_name
+            - label: 选择一扇门
+              max_length: 48
+              options:
+                - 红门
+                - 蓝门
+                - 无门之门
+              required: true
+              type: select
+              variable: choice
+        height: 170
+        id: start
+        position:
+          x: 80
+          y: 260
+        positionAbsolute:
+          x: 80
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 260
+      - data:
+          authorization:
+            type: no-auth
+          body:
+            data:
+              - id: recall-scope
+                key: scope_id
+                type: string
+                value: '{{#start.scope_id#}}'
+              - id: recall-query
+                key: query
+                type: string
+                value: '玩家 {{#start.player_name#}} 在回声迷宫的选择'
+            type: json
+          desc: 从 PowerContext 召回同一 Scope 内的历史选择
+          headers: 'Content-Type: application/json'
+          method: post
+          params: ''
+          retry_config:
+            retry_enabled: false
+          selected: false
+          timeout:
+            connect: 10
+            read: 30
+            write: 10
+          title: 召回旧回声
+          type: http-request
+          url: '{{#env.powercontext_base_url#}}/v1/memory/search'
+        height: 150
+        id: recall
+        position:
+          x: 390
+          y: 260
+        positionAbsolute:
+          x: 390
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 260
+      - data:
+          code: |
+            import json
+
+            def main(recall_body: str, player_name: str, choice: str) -> dict:
+                try:
+                    payload = json.loads(recall_body or "{}")
+                except json.JSONDecodeError:
+                    payload = {}
+
+                hits = payload.get("hits") or []
+                prior_text = "\n".join(
+                    str(item.get("text", "")) for item in hits if isinstance(item, dict)
+                )
+                echo_count = len(hits)
+                repeated = choice in prior_text
+
+                rooms = {
+                    "红门": ("倒悬钟楼", "一枚会倒着计时的铜钥匙"),
+                    "蓝门": ("潮汐图书馆", "一本只在闭眼时出现字迹的书"),
+                    "无门之门": ("零号回廊", "一段属于未来自己的脚步声"),
+                }
+                room, reward = rooms.get(choice, ("未命名房间", "一颗空白骰子"))
+
+                if repeated:
+                    twist = (
+                        "守门人翻出旧账：你上次已经选过这里。墙上的回声抢先说出了你的名字，"
+                        "于是熟悉的路发生折叠，打开了一条只有回头客才能看到的暗道。"
+                    )
+                elif echo_count:
+                    twist = (
+                        "守门人认出了你留下的其他回声，却发现这次选择不同。旧路线在身后熄灭，"
+                        "新的墙缝里传来一阵赞许的笑声。"
+                    )
+                else:
+                    twist = "迷宫里还没有你的回声。守门人把第一枚路标交给你，并警告迷宫会记住一切。"
+
+                story = (
+                    f"## 回声迷宫：{room}\n\n"
+                    f"**玩家**：{player_name}  \n"
+                    f"**本回合选择**：{choice}  \n"
+                    f"**已召回旧回声**：{echo_count} 条\n\n"
+                    f"{twist}\n\n"
+                    f"你在{room}获得了「{reward}」。再次使用同一个 Scope ID 运行，"
+                    "迷宫会依据这次选择改变后续反馈。"
+                )
+                memory_text = (
+                    f"玩家 {player_name} 在回声迷宫选择了{choice}，进入{room}，"
+                    f"获得{reward}。这是可供后续回合召回的已确认游戏状态。"
+                )
+                history_summary = prior_text if prior_text else "没有召回历史；这是该玩家在此 Scope 的首个回声。"
+                return {
+                    "story": story,
+                    "memory_text": memory_text,
+                    "history_summary": history_summary,
+                    "echo_count": echo_count,
+                }
+          code_language: python3
+          desc: 根据 PowerContext 召回结果确定房间、奖励和回头客彩蛋
+          outputs:
+            echo_count:
+              type: number
+            history_summary:
+              type: string
+            memory_text:
+              type: string
+            story:
+              type: string
+          selected: false
+          title: 生成本回合剧情
+          type: code
+          variables:
+            - value_selector:
+                - recall
+                - body
+              variable: recall_body
+            - value_selector:
+                - start
+                - player_name
+              variable: player_name
+            - value_selector:
+                - start
+                - choice
+              variable: choice
+        height: 190
+        id: narrate
+        position:
+          x: 700
+          y: 260
+        positionAbsolute:
+          x: 700
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 280
+      - data:
+          authorization:
+            type: no-auth
+          body:
+            data:
+              - id: remember-scope
+                key: scope_id
+                type: string
+                value: '{{#start.scope_id#}}'
+              - id: remember-kind
+                key: kind
+                type: string
+                value: echo-maze-turn
+              - id: remember-text
+                key: text
+                type: string
+                value: '{{#narrate.memory_text#}}'
+              - id: remember-reason
+                key: reason
+                type: string
+                value: 玩家完成一回合并授权保存游戏进度
+            type: json
+          desc: 把本回合选择写入 PowerContext，供后续独立运行召回
+          headers: 'Content-Type: application/json'
+          method: post
+          params: ''
+          retry_config:
+            retry_enabled: false
+          selected: false
+          timeout:
+            connect: 10
+            read: 30
+            write: 10
+          title: 留下新回声
+          type: http-request
+          url: '{{#env.powercontext_base_url#}}/v1/memory/remember'
+        height: 150
+        id: remember
+        position:
+          x: 1030
+          y: 260
+        positionAbsolute:
+          x: 1030
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 260
+      - data:
+          desc: 返回剧情、召回证据和 PowerContext 写入状态
+          outputs:
+            - value_selector:
+                - narrate
+                - story
+              variable: story
+            - value_selector:
+                - narrate
+                - history_summary
+              variable: recalled_history
+            - value_selector:
+                - narrate
+                - echo_count
+              variable: echo_count
+            - value_selector:
+                - remember
+                - status_code
+              variable: powercontext_write_status
+          selected: false
+          title: 离开本回合
+          type: end
+        height: 145
+        id: end
+        position:
+          x: 1340
+          y: 260
+        positionAbsolute:
+          x: 1340
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 260
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.75

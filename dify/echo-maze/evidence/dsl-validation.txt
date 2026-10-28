@@ -1,0 +1,8 @@
+DSL_VALIDATION_PASS
+Nodes: start -> recall -> narrate -> remember -> end
+Cross-run echo branch: PASS
+
+Command:
+PowerContext/.venv/Scripts/python.exe dify/echo-maze/scripts/validate_submission.py
+
+Executed: 2026-10-28 Asia/Shanghai

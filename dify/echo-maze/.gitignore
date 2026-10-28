@@ -1,0 +1,5 @@
+evidence/*.db
+evidence/*.db-*
+evidence/.*.cursor-key
+__pycache__/
+*.pyc
