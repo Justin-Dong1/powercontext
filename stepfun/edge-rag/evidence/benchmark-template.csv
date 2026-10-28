@@ -1,0 +1,4 @@
+configuration,model_size_mb,batch_size,backend,documents,vectors_per_second,seekdb_search_p50_ms,end_to_end_p50_ms,recall_at_5,notes
+FP32-baseline,90.4,8,wasm,,,,,,fill-on-target-device
+INT8-q8,23.2,8,webgpu,,,,,,fill-on-target-device
+INT8-q8,23.2,8,wasm,,,,,,fill-on-target-device

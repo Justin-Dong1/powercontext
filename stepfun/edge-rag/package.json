@@ -1,0 +1,25 @@
+{
+  "name": "stepfun-edge-rag",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"node server/index.mjs\" \"vite\"",
+    "build": "vite build",
+    "start": "node server/index.mjs",
+    "validate": "node scripts/validate.mjs",
+    "smoke": "node scripts/smoke-seekdb.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "seekdb": "1.4.0"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.6",
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
