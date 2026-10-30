@@ -1,0 +1,14 @@
+--- before/tickets.py
++++ after/tickets.py
+@@ -1,5 +1,9 @@
+-"""Ticket listing baseline: optional status is not implemented yet."""
++"""Utilities for listing tickets with optional exact status filtering."""
+ 
+ 
+ def list_tickets(tickets, status=None):
+-    return [dict(ticket) for ticket in tickets]
++    """Return shallow copies of tickets, optionally filtered by exact status."""
++    if status is None:
++        return [dict(ticket) for ticket in tickets]
++
++    return [dict(ticket) for ticket in tickets if ticket.get("status") == status]

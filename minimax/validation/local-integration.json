@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "actual_minimax": false,
+  "scope": "real database, real Memory, mocked HTTP generation; not official submission evidence",
+  "directory": "G:\\scientific_research\\OB\\.cache\\minimax-validation\\run-yn7hds35",
+  "source_sha256": "472fe6e442c8b9ff7e9fa10c6322eba30550e67889b48b0a53b792e4f038259b",
+  "binary": "G:\\scientific_research\\OB\\.cache\\seekdb-lifecycle\\node_modules\\@oceanbase\\seekdb-node-win32-x64\\native\\seekdb.exe",
+  "binary_sha256": "8cf11dae65142a411d29c49271cd8f1391b2f60fcbc2f7bcef30a6a95ba2cdf4",
+  "checks": [
+    {
+      "check": "Four real documents indexed in seekdb",
+      "passed": true
+    },
+    {
+      "check": "Necessary specs code and tests retrieved by actual SQL",
+      "passed": true
+    },
+    {
+      "check": "Reimport uses updated specification, not a fixed answer",
+      "passed": true
+    },
+    {
+      "check": "Baseline target assertions fail before change",
+      "passed": true
+    },
+    {
+      "check": "Identical target tests pass after change",
+      "passed": true
+    },
+    {
+      "check": "Regression tests pass before and after",
+      "passed": true
+    },
+    {
+      "check": "Tests and specifications were not edited",
+      "passed": true
+    },
+    {
+      "check": "Model request contains actual retrieved sources",
+      "passed": true
+    },
+    {
+      "check": "PowerContext state survives a new CLI process",
+      "passed": true
+    },
+    {
+      "check": "Recovered state is used in next context",
+      "passed": true
+    },
+    {
+      "check": "Mock generation cannot be misreported as real MiniMax",
+      "passed": true
+    },
+    {
+      "check": "Project task state is isolated",
+      "passed": true
+    }
+  ],
+  "port": 2307,
+  "evidence_directory": "G:\\scientific_research\\OB\\.cache\\minimax-validation\\run-yn7hds35\\evidence"
+}

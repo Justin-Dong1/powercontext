@@ -1,0 +1,12 @@
+test_changes_in_source_change_revision (test_contracts.Contracts.test_changes_in_source_change_revision) ... ok
+test_empty_file_map_rejected (test_contracts.Contracts.test_empty_file_map_rejected) ... ok
+test_list_not_accepted_as_file_map (test_contracts.Contracts.test_list_not_accepted_as_file_map) ... ok
+test_live_cannot_send_key_to_non_minimax (test_contracts.Contracts.test_live_cannot_send_key_to_non_minimax) ... ok
+test_mock_cannot_be_replayed_as_real_evidence (test_contracts.Contracts.test_mock_cannot_be_replayed_as_real_evidence) ... ok
+test_mock_cannot_use_remote_endpoint (test_contracts.Contracts.test_mock_cannot_use_remote_endpoint) ... ok
+test_source_escape_rejected (test_contracts.Contracts.test_source_escape_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.017s
+
+OK

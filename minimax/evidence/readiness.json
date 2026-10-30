@@ -1,0 +1,17 @@
+{
+  "ready_for_review": true,
+  "official_submitted": false,
+  "scope": "actual MiniMax + seekdb + PowerContext",
+  "specification_update_verified": true,
+  "separate_process_resume": true,
+  "context_module_sha256": "472fe6e442c8b9ff7e9fa10c6322eba30550e67889b48b0a53b792e4f038259b",
+  "evidence_directory": "G:\\scientific_research\\OB\\ecosystem\\minimax\\runs\\7c28737a619b494c900f85a8dd63fabe\\evidence",
+  "run_directory": "G:\\scientific_research\\OB\\ecosystem\\minimax\\runs\\7c28737a619b494c900f85a8dd63fabe",
+  "versions": {
+    "python": "3.12.14",
+    "httpx": "0.28.1",
+    "PyMySQL": "1.2.0",
+    "powercontext": "0.0.0+git.fda256c329c6e"
+  },
+  "powercontext_source_commit": "fda256c329c6ea9f6e6bb037354922f0f577ac5e"
+}

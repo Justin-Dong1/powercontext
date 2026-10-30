@@ -1,0 +1,36 @@
+{
+  "project": "ticket-desk",
+  "sources": [
+    {
+      "path": "specs/status.md",
+      "kind": "spec"
+    },
+    {
+      "path": "tickets.py",
+      "kind": "code"
+    },
+    {
+      "path": "tests/test_target.py",
+      "kind": "test"
+    },
+    {
+      "path": "tests/test_regression.py",
+      "kind": "test"
+    }
+  ],
+  "tasks": {
+    "status-filter": {
+      "query": "tickets status filtering preserve order copies unknown",
+      "description": "Implement optional exact status filtering for list_tickets. Preserve default order, copies and all fields.",
+      "editable_files": [
+        "tickets.py"
+      ],
+      "required_sources": [
+        "specs/status.md",
+        "tickets.py",
+        "tests/test_target.py",
+        "tests/test_regression.py"
+      ]
+    }
+  }
+}
