@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>研途 ResearchTrail · 把研究证据与进度接起来</title>
+  <meta name="description" content="研途 ResearchTrail：导入课程笔记、论文摘录与实验记录，按关键词找回原文段落，收藏证据并记录备注；研究目标与进度由 PowerContext Memory 持久化，重启后继续。">
+  <meta name="theme-color" content="#123f34">
+  <meta property="og:title" content="研途 ResearchTrail">
+  <meta property="og:description" content="面向学习与科研的资料证据工作台：检索原文、收藏证据、续接进度。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/02-documents.png">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+
+  <header class="site-head">
+    <a class="brand" href="#top" aria-label="研途 ResearchTrail 首页">
+      <svg class="brand-mark" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 7.5c4-1.8 7-1.8 10 0 3-1.8 6-1.8 10 0v17c-4-1.8-7-1.8-10 0-3-1.8-6-1.8-10 0z"></path>
+        <path d="M16 7.5v17"></path>
+      </svg>
+      <span><strong>研途</strong><small>ResearchTrail</small></span>
+    </a>
+    <nav class="site-nav" aria-label="页面导航">
+      <a href="#problem">问题</a>
+      <a href="#flow">工作流</a>
+      <a href="#tech">技术</a>
+      <a href="#verify">验证</a>
+      <a href="#reproduce">复现</a>
+    </nav>
+    <a class="head-cta" href="https://github.com/Justin-Dong1/powercontext/tree/2026-competition-ecosystem/qoder" target="_blank" rel="noreferrer">代码仓库 ↗</a>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">学习科研 · 资料证据工作台</p>
+        <h1>让下一次研究，<br class="hero-break">接着上一次的思路继续。</h1>
+        <p class="lead">课程笔记、论文摘录、实验记录导进同一个项目。按关键词找回原文段落，把关键证据和备注收进清单；研究目标与进度写入 PowerContext Memory，关掉进程也不会断档。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#verify">看实测验收</a>
+          <a class="button ghost" href="#flow">走一遍完整流程</a>
+        </div>
+        <dl class="hero-metrics" aria-label="项目实测数据">
+          <div><dt>22/22</dt><dd>端到端验收</dd></div>
+          <div><dt>13/13</dt><dd>浏览器检查</dd></div>
+          <div><dt>40 段</dt><dd>演示资料原文</dd></div>
+        </dl>
+      </div>
+      <figure class="hero-visual">
+        <div class="paper-frame">
+          <div class="frame-bar" aria-hidden="true"><span></span><span></span><span></span><em>真实界面 · 资料与来源</em></div>
+          <img src="assets/02-documents.png" alt="研途研究资料页截图：三份演示资料，显示文件名、相对来源、摘要和段落数" width="1440" height="1000">
+        </div>
+        <figcaption>每一段资料都保留文件名、相对来源和段号，检索结果才能回到原文。</figcaption>
+        <span class="stamp" aria-hidden="true">PowerContext<br>Memory</span>
+      </figure>
+    </section>
+
+    <section class="section problem" id="problem">
+      <header class="section-head">
+        <p class="eyebrow">01 · 为什么做</p>
+        <h2>文献不是没看过，是找不回来。</h2>
+        <p class="section-lead">真正的断点通常不在阅读，而在阅读之后：原文找不到、出处对不上、下次继续时想不起做到哪。</p>
+      </header>
+      <div class="pain-grid">
+        <article class="pain">
+          <span class="pain-num">01</span>
+          <h3>资料散落</h3>
+          <p>课程笔记在文档里，论文摘录在 PDF 里，实验记录在另一个文件夹。想一起查，只能来回切换。</p>
+        </article>
+        <article class="pain">
+          <span class="pain-num">02</span>
+          <h3>出处丢失</h3>
+          <p>只记得“看过一段相关论述”，却找不回文档名、相对路径和段号。汇报时不敢直接引用。</p>
+        </article>
+        <article class="pain">
+          <span class="pain-num">03</span>
+          <h3>进度断档</h3>
+          <p>隔几天回来，要重新回忆读到哪里、收藏了什么、下一步原本打算做什么。</p>
+        </article>
+      </div>
+      <p class="margin-note">研途不替人读论文。它把“原文—来源—备注—进度”放在同一条可核对的工作流里。</p>
+    </section>
+
+    <section class="section flow" id="flow">
+      <header class="section-head">
+        <p class="eyebrow">02 · 一条完整工作流</p>
+        <h2>从研究目标，到下一次继续。</h2>
+        <p class="section-lead">四个动作，全部在本地完成。界面中的资料均为自行撰写的合成演示笔记。</p>
+      </header>
+
+      <ol class="steps">
+        <li>
+          <span class="step-no">1</span>
+          <div>
+            <h3>建立项目，写下目标</h3>
+            <p>每个项目是一个独立的 PowerContext Scope。资料、检索、证据和进度互不串线。</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-no">2</span>
+          <div>
+            <h3>导入 UTF-8 资料</h3>
+            <p>Markdown / TXT 解析为段落，保留文件名、相对来源和摘要；文件本身不落盘，正文按数据处理。</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-no">3</span>
+          <div>
+            <h3>检索原文，收藏证据</h3>
+            <p>关键词命中原文段落，附带资料名、来源和段号；收藏时写下个人备注，原文与推断分开保存。</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-no">4</span>
+          <div>
+            <h3>保存进度，跨进程续接</h3>
+            <p>研究目标、已完成工作和下一步写入 PowerContext Memory；结束进程后重启，状态按项目恢复。</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/03-search.png" alt="检索页截图：查询“缩放点积注意力”命中两个原文段落，显示来源与段号" loading="lazy">
+          <figcaption><strong>检索</strong> 命中原文段落，来源、段号与关键词高亮一并显示。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/04-evidence.png" alt="证据页截图：收藏的段落、个人备注和 PowerContext Memory 记录标识" loading="lazy">
+          <figcaption><strong>证据</strong> 原文、来源、备注和 Memory 记录标识保存在同一张卡片。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/05-progress.png" alt="进度页截图：研究目标、已完成工作、下一步与 Memory art_ 记录标识" loading="lazy">
+          <figcaption><strong>进度</strong> 目标、进展与下一步写入 Memory，界面显示实际记录 ID。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section features" aria-labelledby="features-title">
+      <header class="section-head">
+        <p class="eyebrow">03 · 核心能力</p>
+        <h2 id="features-title">小而完整，边界清楚。</h2>
+      </header>
+      <div class="feature-grid">
+        <article><h3>项目隔离</h3><p>项目列表只识别带 <code>researchtrail.project=v1</code> 标记的 Scope；另一个项目检索不到、也收藏不了本项目段落。</p></article>
+        <article><h3>来源可核对</h3><p>资料名、相对来源、段号与原文一起呈现。证据清单导出为 Markdown，汇报时可直接回到出处。</p></article>
+        <article><h3>备注与原文分离</h3><p>个人备注单独保存，不混进原文引用。避免把读者推断误写成论文结论。</p></article>
+        <article><h3>重复与越界防护</h3><p>重复导入按来源 + 内容哈希拦截；绝对路径、盘符、<code>..</code> 与控制字符一律拒绝。</p></article>
+        <article><h3>真实 Memory 续接</h3><p>进度和证据通过 PowerContext Atomic Memory API 读写，不使用 JSON 文件模拟。旧进度通过 lifecycle 归档。</p></article>
+        <article><h3>输入与渲染安全</h3><p>SQL 参数化、LIKE 转义、上传限额；前端不使用 <code>innerHTML</code>，并启用 CSP 与禁用缓存响应头。</p></article>
+      </div>
+      <div class="wide-shot">
+        <img src="assets/07-narrow-390.png" alt="390 像素窄屏下的研途界面，项目栏和资料卡片纵向排列且无横向溢出" loading="lazy">
+        <p><strong>窄屏也完整。</strong> 390px 宽度下实测无横向溢出，项目、统计、标签与资料卡片按单列重排。</p>
+      </div>
+    </section>
+
+    <section class="section tech" id="tech">
+      <header class="section-head">
+        <p class="eyebrow">04 · 技术分工</p>
+        <h2>PowerContext 负责状态，SQLite 负责本文。</h2>
+        <p class="section-lead">两部分各做擅长的事：资料检索要参数化与重复检测；项目边界、证据和进度要真正的上下文服务。</p>
+      </header>
+
+      <div class="arch" role="img" aria-label="架构图：浏览器访问 FastAPI 应用，应用同时连接本地 SQLite 资料库与 PowerContext HTTP 服务，后者持久化到 powercontext.db">
+        <div class="arch-node browser"><span>浏览器</span><small>静态 SPA · 严格 CSP</small></div>
+        <div class="arch-arrow">↓ /api/*</div>
+        <div class="arch-node app"><span>FastAPI 应用</span><small>项目 / 资料 / 检索 / 证据 / 进度</small></div>
+        <div class="arch-split">
+          <div class="arch-branch">
+            <div class="arch-arrow">↙ 参数化查询</div>
+            <div class="arch-node sqlite"><span>本地 SQLite</span><small>documents · paragraphs</small></div>
+          </div>
+          <div class="arch-branch">
+            <div class="arch-arrow">↘ HTTP API</div>
+            <div class="arch-node pc"><span>PowerContext 1.4.1</span><small>Scope · Atomic Memory</small></div>
+            <div class="arch-arrow">↓</div>
+            <div class="arch-node db"><span>powercontext.db</span><small>项目 / 证据 / 进度</small></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tech-columns">
+        <article class="tech-card">
+          <p class="tech-kicker">SQLite · 资料层</p>
+          <h3>原文、段落与检索</h3>
+          <ul>
+            <li>存储文档元信息与切分后的段落</li>
+            <li>按项目做参数化 <code>LIKE</code> 检索并转义通配符</li>
+            <li>来源 + SHA-256 内容哈希检测重复导入</li>
+            <li>文件不写入磁盘，只解析正文</li>
+          </ul>
+        </article>
+        <article class="tech-card memory">
+          <p class="tech-kicker">PowerContext · 状态层</p>
+          <h3>项目边界、证据与进度</h3>
+          <ul>
+            <li><code>create_scope</code> 建项目，外部引用标记归属</li>
+            <li><code>remember_memory</code> 写入 <code>research.progress</code> 与 <code>research.evidence</code></li>
+            <li><code>list_memory_entries</code> 只读取 active 记录</li>
+            <li><code>change_atomic_memory_lifecycle</code> 归档旧进度、取消收藏</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="api-table-wrap">
+        <table class="api-table">
+          <caption>应用动作与 PowerContext API 的对应关系</caption>
+          <thead><tr><th>应用动作</th><th>Memory 数据 / API</th></tr></thead>
+          <tbody>
+            <tr><td>新建项目</td><td><code>create_scope</code> · 外部标记 <code>researchtrail.project=v1</code></td></tr>
+            <tr><td>保存进度</td><td><code>remember_memory</code> · kind <code>research.progress</code></td></tr>
+            <tr><td>收藏证据</td><td><code>remember_memory</code> · kind <code>research.evidence</code></td></tr>
+            <tr><td>恢复状态</td><td><code>list_memory_entries</code> · 仅 active，最新时间胜出</td></tr>
+            <tr><td>取消收藏 / 归档</td><td><code>change_atomic_memory_lifecycle</code> · state <code>forgotten</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote">本版本只接入 PowerContext，未使用 seekdb。选择是把现有链路做完整，而不是为增加组件数量拆掉检索的确定性。</p>
+    </section>
+
+    <section class="section verify" id="verify">
+      <header class="section-head">
+        <p class="eyebrow">05 · 实测结果</p>
+        <h2>不是“应该能跑”，是杀进程重启后仍然对得上。</h2>
+        <p class="section-lead">2026-10-30 在本机独立数据目录、独立端口执行；PowerContext 与 Web 应用均真实启动，验收中途终止两个进程再重启。</p>
+      </header>
+
+      <div class="result-band">
+        <div><strong>22/22</strong><span>端到端验收</span><small>项目、资料、检索、证据、导出、进度、隔离、重启</small></div>
+        <div><strong>13/13</strong><span>浏览器 UI 检查</span><small>Chrome headless · 1440×1000 / 390×844</small></div>
+        <div><strong>0</strong><span>控制台错误</span><small>完整主流程与错误态</small></div>
+      </div>
+
+      <div class="verify-grid">
+        <article class="verify-card">
+          <h3>关键断言</h3>
+          <ul>
+            <li>检索“缩放点积注意力”返回 2 段，正文来源为 <code>演示资料/01-注意力机制课程笔记.md</code></li>
+            <li>收藏后导出的 Markdown 同时包含原文、来源、段号与备注</li>
+            <li>A/B 两个项目保存不同进度；重启后分别恢复，Memory 记录 ID 一致</li>
+            <li>B 项目检索 A 的关键词为 0 条，跨项目收藏返回 400</li>
+            <li>空检索词 400、无匹配明确提示、重复导入与重复收藏被拒绝</li>
+            <li>PowerContext 离线时界面显示错误横幅与“重试”动作</li>
+          </ul>
+        </article>
+        <article class="verify-card evidence-card">
+          <h3>可核对材料</h3>
+          <p>原始结果不是截图里的结论，而是脚本输出与两个服务的运行日志：</p>
+          <ul class="evidence-links">
+            <li><a href="https://github.com/Justin-Dong1/powercontext/blob/2026-competition-ecosystem/qoder/evidence/logs/acceptance.md" target="_blank" rel="noreferrer">验收结果 acceptance.md ↗</a></li>
+            <li><a href="https://github.com/Justin-Dong1/powercontext/blob/2026-competition-ecosystem/qoder/evidence/logs/acceptance.json" target="_blank" rel="noreferrer">原始 JSON（含 phase1 / phase2 快照）↗</a></li>
+            <li><a href="https://github.com/Justin-Dong1/powercontext/blob/2026-competition-ecosystem/qoder/evidence/logs/ui-check.md" target="_blank" rel="noreferrer">浏览器检查 ui-check.md ↗</a></li>
+            <li><a href="https://github.com/Justin-Dong1/powercontext/blob/2026-competition-ecosystem/qoder/evidence/logs/servers.log" target="_blank" rel="noreferrer">PowerContext / 应用服务日志 ↗</a></li>
+          </ul>
+          <p class="fine">日志来自本地验证环境，不含真实用户数据，也未声明使用人数或提效比例。</p>
+        </article>
+      </div>
+
+      <figure class="offline-shot">
+        <img src="assets/10-powercontext-offline.png" alt="PowerContext 离线时页面顶部显示红色错误横幅与重试按钮" loading="lazy">
+        <figcaption>错误态是主流程的一部分：PowerContext 不可用时明确提示，恢复后重连并重新加载项目。</figcaption>
+      </figure>
+    </section>
+
+    <section class="section sample" id="sample">
+      <header class="section-head">
+        <p class="eyebrow">06 · 验证样例</p>
+        <h2>一组可逐步核对的输入与输出。</h2>
+      </header>
+      <div class="sample-layout">
+        <div class="sample-steps">
+          <ol>
+            <li>新建项目“演示项目 · 注意力机制复习”，载入 3 份合成演示资料，得到 3 份资料 / 40 段。</li>
+            <li>检索 <code>缩放点积注意力</code>，应返回 2 个匹配段落。</li>
+            <li>第 7 段正文以“缩放点积注意力先计算查询向量与键向量的点积”开头，来源为 <code>演示资料/01-注意力机制课程笔记.md</code>。</li>
+            <li>收藏该段并填写备注，导出 Markdown 后核对原文、来源与备注一致。</li>
+            <li>保存进度，结束两个进程后重启，确认进度、证据与资料恢复；另建项目确认不串数据。</li>
+          </ol>
+        </div>
+        <blockquote class="sample-quote">
+          <p>缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。</p>
+          <footer>演示资料 · 第 7 段 · 合成文本</footer>
+        </blockquote>
+      </div>
+    </section>
+
+    <section class="section reproduce" id="reproduce">
+      <header class="section-head">
+        <p class="eyebrow">07 · 复现</p>
+        <h2>本地启动，只需要 Python 与 uv。</h2>
+        <p class="section-lead">一条命令会同时拉起 PowerContext Server 与 Web 应用；首次运行会在 <code>data/</code> 下创建独立数据目录。</p>
+      </header>
+      <div class="repro-grid">
+        <div class="code-block">
+          <div class="code-head"><span>PowerShell · Windows</span><button type="button" class="copy" data-copy="quickstart">复制</button></div>
+          <pre id="quickstart"><code>git clone --branch 2026-competition-ecosystem `
+  https://github.com/Justin-Dong1/powercontext.git
+cd powercontext\qoder
+
+uv venv .venv --python 3.12
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+Copy-Item .env.example .env
+.\scripts\start.ps1</code></pre>
+        </div>
+        <div class="repro-notes">
+          <p>打开 <code>http://127.0.0.1:8000</code>，按上一节的样例操作。按 <kbd>Ctrl</kbd>+<kbd>C</kbd> 会同时停止两个进程。</p>
+          <p><strong>环境：</strong>Python 3.12.13 · PowerContext 1.4.1（PyPI）· FastAPI 0.162.0 · SQLite。Windows 10.0.26200 实跑；Linux/macOS 启动脚本已提供但未实测。</p>
+          <p><strong>想自己跑验收：</strong></p>
+          <div class="code-block compact">
+            <pre><code>.\.venv\Scripts\python.exe scripts\verify_acceptance.py</code></pre>
+          </div>
+          <p class="fine">脚本使用独立端口与数据目录，真实终止并重启两个进程；不会改动日常开发数据。</p>
+        </div>
+      </div>
+      <p class="repo-line">完整源码、运行说明与验收日志：<a href="https://github.com/Justin-Dong1/powercontext/tree/2026-competition-ecosystem/qoder" target="_blank" rel="noreferrer">github.com/Justin-Dong1/powercontext → qoder/ ↗</a></p>
+    </section>
+
+    <section class="section limits" id="limits">
+      <header class="section-head">
+        <p class="eyebrow">08 · 边界</p>
+        <h2>说清楚没做什么。</h2>
+      </header>
+      <ul class="limit-list">
+        <li><strong>关键词检索，不是语义检索。</strong> 当前未接 seekdb，也未做向量召回；同义表达可能漏检。</li>
+        <li><strong>本地单用户。</strong> 有项目隔离，没有登录与多租户权限，不适合直接暴露到公网。</li>
+        <li><strong>合成演示资料。</strong> 三份笔记为自行撰写，界面与 README 均已标注，不代表真实研究结论。</li>
+        <li><strong>没有真实用户效果数据。</strong> 本站只展示本地实测的工程与验收结果，不把演示数据包装成使用规模。</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="foot-brand">
+      <strong>研途 ResearchTrail</strong>
+      <p>把原文、来源、备注和进度放在同一条工作流里。</p>
+    </div>
+    <div class="foot-meta">
+      <span>用 Qoder 开发</span>
+      <span>状态由 PowerContext Memory 持久化</span>
+      <a href="https://github.com/Justin-Dong1/powercontext/tree/2026-competition-ecosystem/qoder" target="_blank" rel="noreferrer">源码仓库 ↗</a>
+      <span>2026 · 合成资料仅用于演示</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

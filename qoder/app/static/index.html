@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="研途 ResearchTrail：把课程笔记、论文摘录与实验记录变成可检索、可收藏、可续接的研究证据。">
+  <title>研途 ResearchTrail · 研究工作台</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 7.5c4-1.8 7-1.8 10 0 3-1.8 6-1.8 10 0v17c-4-1.8-7-1.8-10 0-3-1.8-6-1.8-10 0z"></path>
+            <path d="M16 7.5v17"></path>
+          </svg>
+        </span>
+        <span class="brand-text"><strong>研途</strong><small>ResearchTrail</small></span>
+      </div>
+
+      <div class="pc-status" id="pcStatus" title="PowerContext 连接状态">
+        <span class="dot"></span>
+        <span id="pcStatusText">正在连接 PowerContext…</span>
+      </div>
+
+      <div class="sidebar-head">
+        <span>研究项目</span>
+        <button class="text-button" id="newProjectBtn" type="button">＋ 新建</button>
+      </div>
+      <nav class="project-list" id="projectList" aria-label="研究项目列表"></nav>
+
+      <div class="sidebar-foot">
+        <span>进度与证据由</span>
+        <strong>PowerContext Memory</strong>
+        <span>持久化</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="banner hidden" id="globalBanner" role="alert">
+        <span id="globalBannerText"></span>
+        <button class="text-button" id="bannerAction" type="button" hidden>重试</button>
+      </div>
+
+      <section class="welcome" id="welcome">
+        <div class="welcome-card">
+          <p class="eyebrow">研究工作台</p>
+          <h1>从一个研究目标开始</h1>
+          <p class="welcome-lead">导入课程笔记、论文摘录和实验记录，按关键词找回原文段落，把关键证据收进证据清单，并在下次打开时接着上次的进度继续。</p>
+          <div class="welcome-steps">
+            <div><span>01</span><p><strong>建立项目</strong>写下研究目标，项目之间完全隔离。</p></div>
+            <div><span>02</span><p><strong>导入资料</strong>保留文件名、相对来源与段落。</p></div>
+            <div><span>03</span><p><strong>续接进度</strong>目标、进展与下一步写入 PowerContext Memory。</p></div>
+          </div>
+          <button class="primary-button" id="welcomeCreateBtn" type="button">创建第一个研究项目</button>
+        </div>
+      </section>
+
+      <section class="workspace hidden" id="workspace">
+        <header class="project-head">
+          <div class="project-title-block">
+            <p class="eyebrow">当前研究项目</p>
+            <h1 id="projectTitle"></h1>
+            <p class="goal" id="projectGoal"></p>
+          </div>
+          <div class="stats" id="projectStats"></div>
+        </header>
+
+        <nav class="tabs" role="tablist" aria-label="工作区">
+          <button role="tab" data-tab="documents" class="active" type="button">资料</button>
+          <button role="tab" data-tab="search" type="button">检索</button>
+          <button role="tab" data-tab="evidence" type="button">证据 <span class="tab-count" id="evidenceTabCount"></span></button>
+          <button role="tab" data-tab="progress" type="button">进度</button>
+        </nav>
+
+        <div class="panels">
+          <section data-panel="documents" class="panel active" aria-label="资料">
+            <div class="panel-head">
+              <div>
+                <h2>研究资料</h2>
+                <p class="hint">支持 UTF-8 编码的 Markdown / TXT；保留相对来源与原文段落，文本始终按数据处理。</p>
+              </div>
+              <div class="toolbar">
+                <label class="secondary-button" for="fileInput">导入文件</label>
+                <input id="fileInput" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden>
+                <label class="secondary-button" for="folderInput">导入文件夹</label>
+                <input id="folderInput" type="file" webkitdirectory multiple hidden>
+                <button class="ghost-button" id="demoBtn" type="button">载入演示资料</button>
+              </div>
+            </div>
+            <div class="inline-feedback hidden" id="importFeedback"></div>
+            <div id="documentList" class="card-list"></div>
+          </section>
+
+          <section data-panel="search" class="panel" aria-label="检索">
+            <div class="panel-head">
+              <div>
+                <h2>关键词检索</h2>
+                <p class="hint">在当前项目的原文段落中查找关键词，结果附带资料名、相对来源与段号。</p>
+              </div>
+            </div>
+            <form class="search-form" id="searchForm">
+              <label class="sr-only" for="searchInput">检索关键词</label>
+              <input id="searchInput" name="q" type="search" autocomplete="off" maxlength="80" placeholder="例如：注意力、对照组、全文索引">
+              <button class="primary-button" type="submit">检索原文</button>
+            </form>
+            <p class="search-hint">无匹配时会明确提示；检索只读取当前项目，不会串到其他项目。</p>
+            <div class="inline-feedback hidden" id="searchFeedback"></div>
+            <div id="searchResults" class="card-list"></div>
+          </section>
+
+          <section data-panel="evidence" class="panel" aria-label="证据">
+            <div class="panel-head">
+              <div>
+                <h2>证据清单</h2>
+                <p class="hint">收藏的段落、来源和个人备注保存在 PowerContext Memory；可导出带来源的 Markdown。</p>
+              </div>
+              <div class="toolbar">
+                <button class="secondary-button" id="exportBtn" type="button">导出 Markdown</button>
+              </div>
+            </div>
+            <div class="inline-feedback hidden" id="evidenceFeedback"></div>
+            <div id="evidenceList" class="card-list"></div>
+          </section>
+
+          <section data-panel="progress" class="panel" aria-label="进度">
+            <div class="panel-head">
+              <div>
+                <h2>研究进度</h2>
+                <p class="hint">目标、已完成工作与下一步会写入 PowerContext Memory；结束进程后重新启动仍可恢复。</p>
+              </div>
+              <div class="memory-badge" id="progressMemoryBadge" hidden>
+                <span>Memory</span><code id="progressMemoryId"></code>
+              </div>
+            </div>
+            <form class="progress-form" id="progressForm">
+              <label>
+                <span>研究目标</span>
+                <textarea id="goalInput" rows="2" maxlength="2000" required></textarea>
+              </label>
+              <label>
+                <span>已完成工作</span>
+                <textarea id="progressInput" rows="7" maxlength="4000" placeholder="记录已经读过的资料、完成的实验、得出的初步结论……"></textarea>
+              </label>
+              <label>
+                <span>下一步</span>
+                <textarea id="nextInput" rows="4" maxlength="4000" placeholder="下次打开时要继续做的事情……"></textarea>
+              </label>
+              <div class="form-footer">
+                <button class="primary-button" type="submit">保存到 PowerContext</button>
+                <span class="save-state" id="saveState">输入修改后点击保存</span>
+              </div>
+            </form>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="projectDialog" class="dialog">
+    <form method="dialog" id="projectForm">
+      <div class="dialog-head">
+        <h2>新建研究项目</h2>
+        <button class="icon-button" value="cancel" aria-label="关闭" type="button" id="closeProjectDialog">×</button>
+      </div>
+      <label>
+        <span>项目名称</span>
+        <input id="newTitle" maxlength="120" required placeholder="例如：注意力机制综述">
+      </label>
+      <label>
+        <span>研究目标</span>
+        <textarea id="newGoal" rows="4" maxlength="2000" required placeholder="这次研究想回答什么问题？"></textarea>
+      </label>
+      <div class="dialog-foot">
+        <button class="ghost-button" value="cancel" type="button" id="cancelProjectDialog">取消</button>
+        <button class="primary-button" type="submit">创建项目</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

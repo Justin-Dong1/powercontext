@@ -1,0 +1,386 @@
+{
+  "run_id": "20261030-143539",
+  "started": "20261030-143539",
+  "finished": "2026-10-30T14:36:07+08:00",
+  "environment": {
+    "python": "3.12.13",
+    "platform": "win32",
+    "powercontext_url": "http://127.0.0.1:18765",
+    "app_url": "http://127.0.0.1:18000",
+    "run_dir": "G:\\scientific_research\\OB\\ecosystem\\qoder\\data\\acceptance\\20261030-143539"
+  },
+  "checks": [
+    {
+      "name": "健康检查：应用 / SQLite / PowerContext 均可用",
+      "ok": true,
+      "detail": "HTTP 200 {\"ok\": true, \"app\": {\"ok\": true, \"data_dir\": \"G:\\\\scientific_research\\\\OB\\\\ecosystem\\\\qoder\\\\data\\\\acceptance\\\\20261030-143539\\\\app\"}, \"database\": {\"ok\": true}, \"powercontext\": {\"ok\": true, \"url\": \"http://127.0.0.1:18765\", \"version\": \"1.4.1\"}}",
+      "at": "2026-10-30T14:35:51+08:00"
+    },
+    {
+      "name": "创建两个隔离的研究项目",
+      "ok": true,
+      "detail": "A=scp_0fqche7z40a292vrxqs4jbx53k B=scp_78cjbnzkjg8wdwxhqyfbz90tgh",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "导入固定演示资料（3 份合成笔记）",
+      "ok": true,
+      "detail": "HTTP 200 imported=3 errors=[]",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "资料保留文件名、相对来源、摘要与段落数",
+      "ok": true,
+      "detail": "documents=3 paragraphs=40 names=['01-注意力机制课程笔记.md', '02-论文摘录-检索增强生成.txt', '03-对照实验记录.md']",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "关键词检索返回原文段落与准确来源",
+      "ok": true,
+      "detail": "q=缩放点积注意力 count=2 命中段=par_6a64ae4f2cc24be184af12313cde6635",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "无匹配时明确提示",
+      "ok": true,
+      "detail": "count=0 message=未找到匹配段落，请尝试其他关键词。",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "空检索词被拒绝",
+      "ok": true,
+      "detail": "HTTP 400 detail=请输入检索关键词。",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "重复导入同一资料被拒绝",
+      "ok": true,
+      "detail": "HTTP 400 detail=未能导入任何资料：资料来源“演示资料/01-注意力机制课程笔记.md”与内容已导入过。",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "收藏证据并保存备注（PowerContext Memory）",
+      "ok": true,
+      "detail": "HTTP 201 evidence_id=art_af4e578e4ed5435f9a51b652b9f04c7e source=演示资料/01-注意力机制课程笔记.md",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "同一段落重复收藏被拒绝",
+      "ok": true,
+      "detail": "HTTP 409 detail=该段落已经收藏。",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "导出 Markdown 证据清单，原文/来源/备注一致",
+      "ok": true,
+      "detail": "HTTP 200 bytes=712 content_type=text/markdown; charset=utf-8 disposition=attachment; filename=\"researchtrail-evidence.md\"; filename*=UTF-8''%E7%A0%94%E9%80%94-%E6%BC%94%E7%A4%BA%E9%A1%B9%E7%9B%AE%20A%20%C2%B7%20%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6%E5%A4%8D%E4%B9%A0-%E8%AF%81%E6%8D%AE%E6%B8%85%E5%8D%95.md",
+      "at": "2026-10-30T14:35:52+08:00"
+    },
+    {
+      "name": "保存项目 A 的研究目标、进度与下一步",
+      "ok": true,
+      "detail": "HTTP 200 source=powercontext memory_id=art_07cb2dfafca84d958d4752e510992752 archived=1",
+      "at": "2026-10-30T14:35:53+08:00"
+    },
+    {
+      "name": "保存项目 B 的不同进度",
+      "ok": true,
+      "detail": "HTTP 200 memory_id=art_c56d1978f7db49a2acd5f4814495283e",
+      "at": "2026-10-30T14:35:53+08:00"
+    },
+    {
+      "name": "项目隔离：B 无法看到 A 的资料/证据，也不能收藏 A 的段落",
+      "ok": true,
+      "detail": "B 检索=0 证据=0 资料=0 跨项目收藏 HTTP=400",
+      "at": "2026-10-30T14:35:53+08:00"
+    },
+    {
+      "name": "非法项目标识/不存在项目/非法证据标识被合理处理",
+      "ok": true,
+      "detail": "bad_id=400 missing=404 bad_evidence=400",
+      "at": "2026-10-30T14:35:53+08:00"
+    },
+    {
+      "name": "PowerContext 中真实存在项目 Scope 与 Memory 记录",
+      "ok": true,
+      "detail": "项目 Scope=2（总计 3） A证据=1 A进度=1 B进度=1",
+      "at": "2026-10-30T14:35:54+08:00"
+    },
+    {
+      "name": "结束进程并重启后，应用与 PowerContext 再次就绪",
+      "ok": true,
+      "detail": "HTTP 200",
+      "at": "2026-10-30T14:36:07+08:00"
+    },
+    {
+      "name": "重启后资料仍在且项目间不串数据",
+      "ok": true,
+      "detail": "A 资料=3 B 资料=0",
+      "at": "2026-10-30T14:36:07+08:00"
+    },
+    {
+      "name": "重启后两份项目的进度分别准确恢复",
+      "ok": true,
+      "detail": "A.progress='已完成缩放点积与多头注意力的笔记整理，收藏 1 条证据。' B.progress='已完成三组对照实验记录初稿。'",
+      "at": "2026-10-30T14:36:07+08:00"
+    },
+    {
+      "name": "重启后证据收藏、备注与来源保持一致",
+      "ok": true,
+      "detail": "A 证据=1 B 证据=0 evidence_id=art_af4e578e4ed5435f9a51b652b9f04c7e",
+      "at": "2026-10-30T14:36:07+08:00"
+    },
+    {
+      "name": "重启后导出的原文/来源/备注仍一致",
+      "ok": true,
+      "detail": "HTTP 200 bytes=709",
+      "at": "2026-10-30T14:36:07+08:00"
+    },
+    {
+      "name": "重启后 PowerContext 记录仍为活跃状态（真实持久化）",
+      "ok": true,
+      "detail": "A证据=1 A进度=1 B进度=1",
+      "at": "2026-10-30T14:36:07+08:00"
+    }
+  ],
+  "failed": 0,
+  "error": null,
+  "state": {
+    "phase1": {
+      "projects": {
+        "A": {
+          "id": "scp_0fqche7z40a292vrxqs4jbx53k",
+          "title": "演示项目 A · 注意力机制复习",
+          "goal": "梳理注意力机制的核心概念，并整理可引用的课程证据。"
+        },
+        "B": {
+          "id": "scp_78cjbnzkjg8wdwxhqyfbz90tgh",
+          "title": "演示项目 B · RAG 实验",
+          "goal": "比较检索增强与滑动窗口上下文方案，记录实验结论。"
+        }
+      },
+      "documents": [
+        {
+          "id": "doc_4a83f2e40f724008baa66b2a69ec3929",
+          "name": "01-注意力机制课程笔记.md",
+          "relative_source": "演示资料/01-注意力机制课程笔记.md",
+          "content_sha256": "ea69030002083356b9004e644fd4b499aefdc81d5170766d3ae241fa248ae07b",
+          "summary": "# 注意力机制课程笔记（演示） > 演示资料：本文为自行撰写的虚构课程笔记，仅用于研途 ResearchTrail 的功能演示，不代表真实研究结论或实验数据。 ## 一、为什么需要注意力 循环网络把整段序列压缩进一个固定长度的隐藏状态，句子一长，早期信息就容易被覆盖。注意力机制不再强迫模型只依赖最后一个状态，而是允许解…",
+          "paragraph_count": 15,
+          "created_at": "2026-10-30T06:35:52+00:00"
+        },
+        {
+          "id": "doc_1aa0ef18e7f7411a8456c1a4e1f6c573",
+          "name": "02-论文摘录-检索增强生成.txt",
+          "relative_source": "演示资料/02-论文摘录-检索增强生成.txt",
+          "content_sha256": "c6316d208f72a41d13a4ef1d31664a1860db0c83e6b12f4e04789c96f37b16d7",
+          "summary": "演示资料：本文为自行撰写的虚构论文摘录，仅用于研途 ResearchTrail 的功能演示，不代表真实论文原文或实验数据。 检索增强生成摘录 一、基本流程 检索增强生成通常分为索引、检索和生成三个阶段。索引阶段把文档切分成片段并建立检索结构；检索阶段根据问题找到若干相关片段；生成阶段把问题和片段一起交给语言模型，要求模…",
+          "paragraph_count": 13,
+          "created_at": "2026-10-30T06:35:52+00:00"
+        },
+        {
+          "id": "doc_6473b426f577467dab9696448a037556",
+          "name": "03-对照实验记录.md",
+          "relative_source": "演示资料/03-对照实验记录.md",
+          "content_sha256": "28fea38b2bf22d18e7d6df133b8e0b8524f83be985d005ae6f826be3d11c84a2",
+          "summary": "# 对照实验记录（演示） > 演示资料：本文为自行撰写的虚构实验记录，仅用于研途 ResearchTrail 的功能演示，所有数值均为演示数据。 ## 实验目的 比较不同上下文组织方式对多轮问答任务的影响，重点观察答案是否引用了正确资料，以及模型是否会遗漏关键条件。 ## 实验设计 本轮实验设置三组：对照组、检索增强组…",
+          "paragraph_count": 12,
+          "created_at": "2026-10-30T06:35:52+00:00"
+        }
+      ],
+      "search": {
+        "query": "缩放点积注意力",
+        "results": [
+          {
+            "paragraph_id": "par_9c015aa8ae184e9587720b55475704b5",
+            "ordinal": 6,
+            "text": "## 二、缩放点积注意力",
+            "document_id": "doc_4a83f2e40f724008baa66b2a69ec3929",
+            "document_name": "01-注意力机制课程笔记.md",
+            "relative_source": "演示资料/01-注意力机制课程笔记.md"
+          },
+          {
+            "paragraph_id": "par_6a64ae4f2cc24be184af12313cde6635",
+            "ordinal": 7,
+            "text": "缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。除以平方根的目的是避免维度增大时点积数值过大，导致 softmax 进入饱和区、梯度变得很小。",
+            "document_id": "doc_4a83f2e40f724008baa66b2a69ec3929",
+            "document_name": "01-注意力机制课程笔记.md",
+            "relative_source": "演示资料/01-注意力机制课程笔记.md"
+          }
+        ],
+        "count": 2
+      },
+      "evidence": {
+        "evidence_id": "art_af4e578e4ed5435f9a51b652b9f04c7e",
+        "paragraph_id": "par_6a64ae4f2cc24be184af12313cde6635",
+        "document_id": "doc_4a83f2e40f724008baa66b2a69ec3929",
+        "document_name": "01-注意力机制课程笔记.md",
+        "relative_source": "演示资料/01-注意力机制课程笔记.md",
+        "paragraph_ordinal": 7,
+        "quote": "缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。除以平方根的目的是避免维度增大时点积数值过大，导致 softmax 进入饱和区、梯度变得很小。",
+        "note": "用于组会引言，需与论文原文核对。",
+        "created_at": "2026-10-30T06:35:52+00:00"
+      },
+      "export": "# 演示项目 A · 注意力机制复习 · 证据清单\n\n> 研究目标：梳理注意力机制的核心概念，并整理可引用的课程证据。\n> 导出时间：2026-10-30T14:35:52+08:00\n> 说明：证据收藏与备注由 PowerContext Memory 持久化。\n\n## 1. 01-注意力机制课程笔记.md\n\n- 来源：`演示资料/01-注意力机制课程笔记.md` · 第 7 段\n- 原文：\n> 缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。除以平方根的目的是避免维度增大时点积数值过大，导致 softmax 进入饱和区、梯度变得很小。\n- 我的备注：用于组会引言，需与论文原文核对。\n",
+      "progress": {
+        "A": {
+          "goal": "梳理注意力机制的核心概念，形成可引用的证据清单。",
+          "progress": "已完成缩放点积与多头注意力的笔记整理，收藏 1 条证据。",
+          "next_steps": "补充显存占用实验，并核对课程小实验的结论边界。",
+          "updated_at": "2026-10-30T06:35:53+00:00",
+          "source": "powercontext",
+          "memory_id": "art_07cb2dfafca84d958d4752e510992752"
+        },
+        "B": {
+          "goal": "比较检索增强与滑动窗口上下文方案。",
+          "progress": "已完成三组对照实验记录初稿。",
+          "next_steps": "固定随机种子重复三次，并补充无匹配资料对照组。",
+          "updated_at": "2026-10-30T06:35:53+00:00",
+          "source": "powercontext",
+          "memory_id": "art_c56d1978f7db49a2acd5f4814495283e"
+        }
+      },
+      "powercontext": {
+        "scopes": [
+          {
+            "scope_id": "scp_0fqche7z40a292vrxqs4jbx53k",
+            "title": "演示项目 A · 注意力机制复习",
+            "marker": true,
+            "summary": "梳理注意力机制的核心概念，形成可引用的证据清单。"
+          },
+          {
+            "scope_id": "scp_5qq8b00xbbby6c82zt56kh2rtj",
+            "title": "Default",
+            "marker": false,
+            "summary": "Default context"
+          },
+          {
+            "scope_id": "scp_78cjbnzkjg8wdwxhqyfbz90tgh",
+            "title": "演示项目 B · RAG 实验",
+            "marker": true,
+            "summary": "比较检索增强与滑动窗口上下文方案。"
+          }
+        ],
+        "active_counts": {
+          "scp_0fqche7z40a292vrxqs4jbx53k": {
+            "research.progress": 1,
+            "research.evidence": 1
+          },
+          "scp_78cjbnzkjg8wdwxhqyfbz90tgh": {
+            "research.progress": 1,
+            "research.evidence": 0
+          }
+        },
+        "database_files": [
+          {
+            "path": "powercontext\\.powercontext.db.cursor-key",
+            "bytes": 32
+          },
+          {
+            "path": "powercontext\\.powercontext.db.cursor-key.lock",
+            "bytes": 0
+          },
+          {
+            "path": "powercontext\\powercontext.db",
+            "bytes": 819200
+          },
+          {
+            "path": "powercontext\\powercontext.db-shm",
+            "bytes": 32768
+          },
+          {
+            "path": "powercontext\\powercontext.db-wal",
+            "bytes": 634512
+          },
+          {
+            "path": "powercontext\\powercontext.db.pc-migration-state\\maintenance.json",
+            "bytes": 962
+          }
+        ]
+      },
+      "finished": "2026-10-30T14:35:54+08:00"
+    },
+    "phase2": {
+      "progress": {
+        "A": {
+          "goal": "梳理注意力机制的核心概念，形成可引用的证据清单。",
+          "progress": "已完成缩放点积与多头注意力的笔记整理，收藏 1 条证据。",
+          "next_steps": "补充显存占用实验，并核对课程小实验的结论边界。",
+          "updated_at": "2026-10-30T06:35:53+00:00",
+          "source": "powercontext",
+          "memory_id": "art_07cb2dfafca84d958d4752e510992752"
+        },
+        "B": {
+          "goal": "比较检索增强与滑动窗口上下文方案。",
+          "progress": "已完成三组对照实验记录初稿。",
+          "next_steps": "固定随机种子重复三次，并补充无匹配资料对照组。",
+          "updated_at": "2026-10-30T06:35:53+00:00",
+          "source": "powercontext",
+          "memory_id": "art_c56d1978f7db49a2acd5f4814495283e"
+        }
+      },
+      "evidence": [
+        {
+          "evidence_id": "art_af4e578e4ed5435f9a51b652b9f04c7e",
+          "paragraph_id": "par_6a64ae4f2cc24be184af12313cde6635",
+          "document_id": "doc_4a83f2e40f724008baa66b2a69ec3929",
+          "document_name": "01-注意力机制课程笔记.md",
+          "relative_source": "演示资料/01-注意力机制课程笔记.md",
+          "paragraph_ordinal": 7,
+          "quote": "缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。除以平方根的目的是避免维度增大时点积数值过大，导致 softmax 进入饱和区、梯度变得很小。",
+          "note": "用于组会引言，需与论文原文核对。",
+          "created_at": "2026-10-30T06:35:52+00:00"
+        }
+      ],
+      "export": "# 演示项目 A · 注意力机制复习 · 证据清单\n\n> 研究目标：梳理注意力机制的核心概念，形成可引用的证据清单。\n> 导出时间：2026-10-30T14:36:07+08:00\n> 说明：证据收藏与备注由 PowerContext Memory 持久化。\n\n## 1. 01-注意力机制课程笔记.md\n\n- 来源：`演示资料/01-注意力机制课程笔记.md` · 第 7 段\n- 原文：\n> 缩放点积注意力先计算查询向量与键向量的点积，再除以维度平方根，最后经过 softmax 得到权重。除以平方根的目的是避免维度增大时点积数值过大，导致 softmax 进入饱和区、梯度变得很小。\n- 我的备注：用于组会引言，需与论文原文核对。\n",
+      "powercontext": {
+        "scopes": [
+          {
+            "scope_id": "scp_0fqche7z40a292vrxqs4jbx53k",
+            "title": "演示项目 A · 注意力机制复习",
+            "marker": true,
+            "summary": "梳理注意力机制的核心概念，形成可引用的证据清单。"
+          },
+          {
+            "scope_id": "scp_5qq8b00xbbby6c82zt56kh2rtj",
+            "title": "Default",
+            "marker": false,
+            "summary": "Default context"
+          },
+          {
+            "scope_id": "scp_78cjbnzkjg8wdwxhqyfbz90tgh",
+            "title": "演示项目 B · RAG 实验",
+            "marker": true,
+            "summary": "比较检索增强与滑动窗口上下文方案。"
+          }
+        ],
+        "database_files": [
+          {
+            "path": "powercontext\\.powercontext.db.cursor-key",
+            "bytes": 32
+          },
+          {
+            "path": "powercontext\\.powercontext.db.cursor-key.lock",
+            "bytes": 0
+          },
+          {
+            "path": "powercontext\\powercontext.db",
+            "bytes": 819200
+          },
+          {
+            "path": "powercontext\\powercontext.db-shm",
+            "bytes": 32768
+          },
+          {
+            "path": "powercontext\\powercontext.db-wal",
+            "bytes": 634512
+          },
+          {
+            "path": "powercontext\\powercontext.db.pc-migration-state\\maintenance.json",
+            "bytes": 962
+          }
+        ]
+      }
+    }
+  }
+}

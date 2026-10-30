@@ -1,0 +1,13 @@
+.venv/
+data/
+__pycache__/
+*.py[cod]
+.env
+.pytest_cache/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+.DS_Store
+.idea/
+.vscode/
+node_modules/

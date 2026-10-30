@@ -1,0 +1,85 @@
+{
+  "run_at": "2026-10-30T14:34:35+08:00",
+  "base_url": "http://127.0.0.1:8000",
+  "checks": [
+    {
+      "name": "页面加载并显示 PowerContext 连接状态",
+      "ok": true,
+      "detail": "PowerContext 1.4.1 已连接"
+    },
+    {
+      "name": "通过 UI 创建项目并导入 3 份演示资料",
+      "ok": true,
+      "detail": "title=演示项目 · 注意力机制复习 docs=3"
+    },
+    {
+      "name": "检索结果展示原文、来源与高亮",
+      "ok": true,
+      "detail": "results=2 highlight=缩放点积注意力"
+    },
+    {
+      "name": "收藏证据并显示个人备注",
+      "ok": true,
+      "detail": "备注：用于组会引言，需与论文原文核对。"
+    },
+    {
+      "name": "UI 导出 Markdown 且包含原文/来源/备注",
+      "ok": true,
+      "detail": "filename=研途-演示项目 · 注意力机制复习-证据清单.md bytes=319"
+    },
+    {
+      "name": "保存进度并显示 Memory 记录标识",
+      "ok": true,
+      "detail": "memory_id=art_ae1d403a423a450b930107b927b545bd"
+    },
+    {
+      "name": "刷新页面后进度从 PowerContext 恢复",
+      "ok": true,
+      "detail": "progress=已完成缩放点积注意力与多头注意力的笔记整理，收藏…"
+    },
+    {
+      "name": "窄屏 390px 下无横向溢出",
+      "ok": true,
+      "detail": "{\"width\": 390, \"sidebarWidth\": 390, \"workspaceWidth\": 362, \"overflow\": 0}"
+    },
+    {
+      "name": "UI 空检索词提示",
+      "ok": true,
+      "detail": "请输入检索关键词。"
+    },
+    {
+      "name": "UI 无匹配提示",
+      "ok": true,
+      "detail": "未找到匹配段落，请尝试其他关键词。"
+    },
+    {
+      "name": "PowerContext 不可用时显示错误横幅和重试动作",
+      "ok": true,
+      "detail": "PowerContext 未连接（http://127.0.0.1:8765）。进度与证据将无法保存，请检查服务后重试。"
+    },
+    {
+      "name": "恢复后重新连接成功",
+      "ok": true,
+      "detail": "PowerContext 1.4.1 已连接"
+    },
+    {
+      "name": "浏览器控制台无错误",
+      "ok": true,
+      "detail": "无"
+    }
+  ],
+  "failed": 0,
+  "console_errors": [],
+  "screenshots": [
+    "01-empty-state.png",
+    "02-documents.png",
+    "03-search.png",
+    "04-evidence.png",
+    "05-progress.png",
+    "06-reload-restored.png",
+    "07-narrow-390.png",
+    "08-empty-search.png",
+    "09-no-match.png",
+    "10-powercontext-offline.png"
+  ]
+}
