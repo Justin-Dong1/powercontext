@@ -1,6 +1,6 @@
 # 规有所依：SDD 工程上下文模块
 
-本目录是 MiniMax 生态题的实现材料，最终须放进队伍 PowerContext 仓库的 minimax/ 目录，并基于 2026-competition-ecosystem 分支开发。2026-10-30 已通过 MiniMax-M3 真实开发、规格更新、跨进程恢复及离线证据重放；干净 Linux 环境验证、生态分支发布及官方判题尚未完成。
+本目录是 MiniMax 生态题的实现材料，最终须放进队伍 PowerContext 仓库的 minimax/ 目录，并基于 2026-competition-ecosystem 分支开发。2026-10-30 已通过 MiniMax-M3 真实开发、规格更新、跨进程恢复及离线证据重放；另在不继承原有包的独立 Windows 虚拟环境通过7项接口检查、12项真实数据库/状态检查及真实证据重放。官方判题尚未完成。
 
 ## 功能与技术分工
 
@@ -47,6 +47,8 @@ Windows 可执行文件位于 runtime/node_modules/@oceanbase/seekdb-node-win32-
 
 记录包括：context.json、baseline-tests.json、model-record.json、before/、after/、code.diff、verification.json、resumed-context.json、result.json、resume.json 以及每阶段日志。记录不保存请求头、密钥或模型私有思维链。代码与测试版本由内容摘要绑定。首次成功后保存整个 run 目录，不只保存截图。
 
+本目录的 `.gitattributes` 禁止 Git 自动转换换行符，以保留来源摘要、模型响应及代码快照的原始字节。将材料放入参赛仓库时须一并保留这个文件。
+
 ## 独立 CLI
 
 ~~~powershell
@@ -68,7 +70,9 @@ python replay_evidence.py PATH_TO_REAL_RUN/evidence --out replay-results
 
 verify_local.py 使用真实 seekdb、真实 PowerContext 和明确标识的本地协议夹具，无需 MiniMax Token。它验证工程流程，不能证明 MiniMax 实际参与；生成的 actual_minimax=false，不可充作提交开发记录。replay_evidence.py 只接受真实 MiniMax 记录，用提交的原始上下文、模型响应及同一组测试重放修改前后结果，不再次调用模型。
 
-现有本地集成12项通过，接口/来源/记录保护7项通过；原始结果位于项目根 results/minimax/local-integration.json。2026-10-30 的真实 MiniMax-M3 运行编号为 7c28737a619b494c900f85a8dd63fabe：修改前3项目标断言失败，修改后3项目标测试及3项回归均通过，受保护资料未变，规格重导入及跨进程状态恢复通过。真实记录离线重放通过。开发机原始记录在 runs/ 对应目录，交付包中整理为 evidence/；重放命令为 `python replay_evidence.py evidence --out replay-results`。尚未在干净 Linux 环境或官方判题环境验证。
+现有本地集成12项通过，接口/来源/记录保护7项通过；原始结果位于项目根 results/minimax/local-integration.json。2026-10-30 的真实 MiniMax-M3 运行编号为 7c28737a619b494c900f85a8dd63fabe：修改前3项目标断言失败，修改后3项目标测试及3项回归均通过，受保护资料未变，规格重导入及跨进程状态恢复通过。真实记录离线重放通过。开发机原始记录在 runs/ 对应目录，交付包中整理为 evidence/；重放命令为 `python replay_evidence.py evidence --out replay-results`。
+
+独立环境验证报告在交付包 `validation/clean-environment.json`：从 Git 候选版本导出材料，创建不继承系统包的新虚拟环境，安装56个兼容依赖，使用空数据库/状态重新执行12项集成检查、7项接口检查及真实证据重放。由于执行环境 DNS 无法访问 GitHub，安装使用下载缓存及按 SHA256 核验的固定 PowerContext 源码归档；其360个 Python 源文件与安装结果逐一校验。归档缺少 Git 版本元数据，构建时显式指定版本为 `0.0.0+git.fda256c329c6e`。本次未验证从公网重新下载依赖，也未在 Linux 或官方判题环境运行。
 
 ## 提交边界
 

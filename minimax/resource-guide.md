@@ -6,7 +6,7 @@
 
 | 赛题 | 本地已完成 | 还没完成 |
 | --- | --- | --- |
-| MiniMax，20分 | SDD CLI、真实seekdb索引/检索、规格更新、PowerContext状态保存及跨进程恢复、真实MiniMax-M3修改、同组功能/回归测试、真实证据离线重放 | 干净Linux环境验证，生态分支发布及正式判题 |
+| MiniMax，20分 | SDD CLI、真实seekdb索引/检索、规格更新、PowerContext状态保存及跨进程恢复、真实MiniMax-M3修改、同组功能/回归测试、真实证据离线重放、独立Windows环境复现（缓存依赖） | 修复换行保护后的提交发布及正式判题；Linux未验证 |
 | AMD，20分 | 固定数据与真值、三轮原生seekdb CPU基线、Recall/ID验证、环境采集、hipVS CAGRA→HNSW构建原型、对照结果检查工具 | 实际GPU编译/运行、seekdb原生HNSW构建接入及格式适配、GPU构建证据、同机CPU/GPU实测、实现PR及正式判题 |
 
 AMD 仍有实质性的内核接入工作；拿到云机器后需要继续实现并验证，不能只填一个 Token 或 UUID 就提测。MiniMax 本地模型夹具明确标记为模拟，不算 MiniMax 实际参与。
